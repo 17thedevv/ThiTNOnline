@@ -1,0 +1,59 @@
+.classes-page {
+  padding: 20px;
+}
+
+.classes-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.classes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.class-card {
+  height: 160px;
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.class-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.class-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.65),
+    rgba(0, 0, 0, 0.15)
+  );
+  color: #fff;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.class-overlay h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.class-overlay p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+

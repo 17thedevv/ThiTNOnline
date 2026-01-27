@@ -1,0 +1,84 @@
+.class-detail {
+  background: #f5f7fb;
+  min-height: 100vh;
+}
+
+/* Banner */
+.class-banner {
+  height: 220px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.class-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px 40px;
+}
+
+.class-banner-overlay h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.class-banner-overlay p {
+  margin-top: 8px;
+  opacity: 0.9;
+}
+
+/* Content */
+.class-content {
+  padding: 24px 40px;
+}
+
+.exam-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+/* Exam card */
+.exam-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.exam-icon {
+  font-size: 32px;
+}
+
+.exam-info h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.exam-info p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.exam-btn {
+  margin-left: auto;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.exam-btn:hover {
+  background: #1e40af;
+}

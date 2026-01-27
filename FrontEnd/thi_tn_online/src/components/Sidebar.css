@@ -1,0 +1,49 @@
+.sidebar {
+  width: 240px;
+  background: #f8fafc; /* nền xám rất nhạt */
+  border-right: 1px solid #e5e7eb;
+  padding: 20px 16px;
+}
+
+.sidebar-logo {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 32px;
+  color: #0f172a;
+}
+
+/* MENU */
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 14px; /* 👈 khoảng cách đúng kiểu Azota */
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  height: 48px;
+  padding: 0 14px;
+
+  border-radius: 10px;
+  font-size: 14.5px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background: #e0f2fe;
+}
+
+/* ACTIVE */
+.menu-item.active {
+  background: #e0f2fe;
+  color: #0284c7;
+  font-weight: 600;
+}
+
+.menu-item .icon {
+  font-size: 18px;
+}

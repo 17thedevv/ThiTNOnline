@@ -1,0 +1,65 @@
+.dashboard-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.dashboard-header p {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.stat-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 24px 0 12px;
+}
+
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.class-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.class-name {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.class-teacher {
+  font-size: 13px;
+  color: #6b7280;
+}

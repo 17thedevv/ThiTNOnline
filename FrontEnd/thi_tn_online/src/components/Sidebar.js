@@ -1,19 +1,10 @@
-import { Link } from "react-router-dom";
+import "./Sidebar.css";
+<aside className="sidebar">
+  <div className="sidebar-logo">Thi Online</div>
 
-const Sidebar = () => {
-  return (
-    <div style={{
-      width: 220,
-      background: "#f5f5f5",
-      minHeight: "calc(100vh - 60px)",
-      padding: 20
-    }}>
-      <p><Link to="/">Dashboard</Link></p>
-      <p><Link to="/classes">Lớp học</Link></p>
-      <p><Link to="/assignments">Bài tập</Link></p>
-      <p><Link to="/profile">Hồ sơ</Link></p>
-    </div>
-  );
-};
-
-export default Sidebar;
+  <div className="sidebar-section">
+    <div className="sidebar-item active">Lớp học</div>
+    <div className="sidebar-item">Bài kiểm tra</div>
+    <div className="sidebar-item">Kết quả</div>
+  </div>
+</aside>
