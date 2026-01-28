@@ -1,10 +1,20 @@
 import "./Sidebar.css";
-<aside className="sidebar">
-  <div className="sidebar-logo">Thi Online</div>
+import logo from "../assets/images/gdht.jpg";
 
-  <div className="sidebar-section">
-    <div className="sidebar-item active">Lớp học</div>
-    <div className="sidebar-item">Bài kiểm tra</div>
-    <div className="sidebar-item">Kết quả</div>
-  </div>
-</aside>
+const Sidebar = () => {
+  return (
+    <aside className="sidebar">
+      <div className="sidebar-logo">
+        <img src={logo} alt="logo" />
+        <span>Thi Online</span>
+      </div>
+
+      <div className="sidebar-menu">
+        <div className="menu-item active">Lớp học</div>
+        <div className="menu-item">Bài kiểm tra</div>
+      </div>
+    </aside>
+  );
+};
+
+export default Sidebar;

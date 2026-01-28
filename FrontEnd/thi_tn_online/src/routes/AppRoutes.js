@@ -4,6 +4,9 @@ import PublicLayout from "../layouts/PulicLayout";
 import PrivateLayout from "../layouts/PrivateLayout";
 
 import Login from "../pages/auth/Login";
+import Register from "../pages/auth/Register";
+import ForgotPassword from "../pages/auth/ForgotPassword";
+
 import PublicDashboard from "../pages/dashboard/PublicDashboard";
 import Dashboard from "../pages/dashboard/Dashboard";
 import Classes from "../pages/classes/Classes";
@@ -20,6 +23,8 @@ const AppRoutes = () => {
   <Route element={<PublicLayout />}>
     <Route index element={<PublicDashboard />} />
     <Route path="/login" element={<Login />} />
+    <Route path="/register" element={<Register />} />
+    <Route path="/forgot-password" element={<ForgotPassword />} />
   </Route>
 
   {/* PRIVATE */}

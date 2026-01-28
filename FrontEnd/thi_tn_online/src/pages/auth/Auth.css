@@ -1,0 +1,85 @@
+/* auth.css – dùng chung cho các trang xác thực */
+
+.auth-page {
+  min-height: 100vh;
+  background-image: url("../../assets/images/h1.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  position: relative;
+}
+
+/* Overlay tối nền */
+.auth-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* Card form */
+.auth-card {
+  position: relative;
+  z-index: 1;
+
+  width: 380px;
+  padding: 32px;
+  border-radius: 12px;
+  background: #fff;
+
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.auth-card h2 {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+/* Input */
+.auth-card input {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+/* Button */
+.auth-card button {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+
+  background: #1e88e5;
+  color: #fff;
+  border: none;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.auth-card button:hover {
+  background: #1565c0;
+}
+
+/* Link */
+.auth-link {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.auth-link a {
+  color: #1e88e5;
+  text-decoration: none;
+}
+
+.auth-link a:hover {
+  text-decoration: underline;
+}

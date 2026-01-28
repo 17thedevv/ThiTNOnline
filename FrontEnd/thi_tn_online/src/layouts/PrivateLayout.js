@@ -2,6 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { FaBook, FaClipboardList } from "react-icons/fa";
 import TopBar from "../components/Topbar";
 import "./PrivateLayout.css";
+import logo from "../assets/images/gdht.jpg";
 
 const PrivateLayout = () => {
   return (
@@ -9,7 +10,7 @@ const PrivateLayout = () => {
       {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <img src="/logo.png" alt="Thi Online" />
+          <img src={logo} alt="Thi Online" />
           <span>Thi Online</span>
         </div>
 

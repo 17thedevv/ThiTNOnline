@@ -6,11 +6,21 @@
 }
 
 .sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 32px;
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: 32px;
   color: #0f172a;
 }
+
+.sidebar-logo img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
 
 /* MENU */
 .sidebar-menu {

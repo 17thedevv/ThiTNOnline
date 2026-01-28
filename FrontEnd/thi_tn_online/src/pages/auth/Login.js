@@ -1,7 +1,6 @@
 import "./Login.css";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import h1 from "../../assets/images/h1.jpg";
 
 const Login = () => {
   const { login } = useAuth();
@@ -35,14 +34,24 @@ const Login = () => {
           className="login-input"
         />
 
-        <div className="login-forgot">Quên mật khẩu?</div>
+        {/* QUÊN MẬT KHẨU */}
+        <div
+          className="login-forgot"
+          onClick={() => navigate("/forgot-password")}
+        >
+          Quên mật khẩu?
+        </div>
 
         <button className="login-btn" onClick={handleLogin}>
           Đăng nhập
         </button>
 
+        {/* ĐĂNG KÝ */}
         <div className="login-register">
-          Bạn chưa có tài khoản? <span>Tạo một tài khoản mới</span>
+          Bạn chưa có tài khoản?{" "}
+          <span onClick={() => navigate("/register")}>
+            Tạo một tài khoản mới
+          </span>
         </div>
 
         <div className="login-or">Hoặc</div>
