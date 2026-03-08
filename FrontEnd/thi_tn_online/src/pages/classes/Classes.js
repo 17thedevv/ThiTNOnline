@@ -1,45 +1,27 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "./Classes.css";
 
+const mockClasses = [
+  { id: 1, name: "CNTT K22D" },
+  { id: 2, name: "CNTT K36D" },
+];
+
 const Classes = () => {
-  const classes = [
-    {
-      id: 1,
-      name: "Lập trình Web",
-      teacher: "Thầy A",
-      image: "/images/class1.jpg",
-    },
-    {
-      id: 2,
-      name: "Cơ sở dữ liệu",
-      teacher: "Cô B",
-      image: "/images/class2.jpg",
-    },
-    {
-      id: 3,
-      name: "Mạng máy tính",
-      teacher: "Thầy C",
-      image: "/images/class3.jpg",
-    },
-  ];
+  const navigate = useNavigate();
 
   return (
-    <div className="classes-page">
-      <h2 className="classes-title">Lớp học của tôi</h2>
+    <div className="classes-container">
+      <h2>Lớp học của tôi</h2>
 
-      <div className="classes-grid">
-        {classes.map((item) => (
-          <Link
-            to={`/classes/${item.id}`}
-            key={item.id}
+      <div className="class-grid">
+        {mockClasses.map((cls) => (
+          <div
+            key={cls.id}
             className="class-card"
-            style={{ backgroundImage: `url(${item.image})` }}
+            onClick={() => navigate(`/classes/${cls.id}`)}
           >
-            <div className="class-overlay">
-              <h3>{item.name}</h3>
-              <p>{item.teacher}</p>
-            </div>
-          </Link>
+            {cls.name}
+          </div>
         ))}
       </div>
     </div>

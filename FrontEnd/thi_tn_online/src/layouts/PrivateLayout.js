@@ -1,8 +1,10 @@
-import { NavLink, Outlet } from "react-router-dom";
-import { FaBook, FaClipboardList } from "react-icons/fa";
+import { NavLink, Outlet, Link } from "react-router-dom";
+import { FaBook, FaClipboardList, FaHome } from "react-icons/fa";
 import TopBar from "../components/Topbar";
+import ChatBot from "../components/Chatbot";
 import "./PrivateLayout.css";
 import logo from "../assets/images/gdht.jpg";
+
 
 const PrivateLayout = () => {
   return (
@@ -10,11 +12,21 @@ const PrivateLayout = () => {
       {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="sidebar-logo">
+          <Link to="/dashboard">
           <img src={logo} alt="Thi Online" />
           <span>Thi Online</span>
+          </Link>
         </div>
 
         <nav className="sidebar-menu">
+          <NavLink
+            to="/dashboard"
+            className={({ isActive }) => isActive ? "menu-item active" : "menu-item"
+            }
+            >
+             <FaHome className="menu-icon" />
+             <span>Trang chủ</span>
+          </NavLink>
           <NavLink
             to="/classes"
             className={({ isActive }) =>
@@ -32,7 +44,7 @@ const PrivateLayout = () => {
             }
           >
             <FaClipboardList className="menu-icon" />
-            <span>Bài trắc nghiệm</span>
+            <span>Khóa Học</span>
           </NavLink>
         </nav>
       </aside>
@@ -44,6 +56,7 @@ const PrivateLayout = () => {
           <Outlet />
         </main>
       </div>
+      <ChatBot />
     </div>
   );
 };

@@ -1,23 +1,156 @@
-.exam-detail {
-  background: #fff;
+.exam-container {
   padding: 24px;
-  border-radius: 12px;
+  max-width: 1200px;
+  margin: auto;
 }
 
-.question-item {
+.exam-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 16px 24px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   margin-bottom: 20px;
 }
 
-.option {
-  display: block;
-  margin: 6px 0;
+.exam-timer {
+  font-weight: bold;
+  color: #ef4444;
 }
 
 .submit-btn {
-  padding: 10px 20px;
-  background: #2563eb;
+  background: #ec4899;
   color: white;
   border: none;
-  border-radius: 8px;
+  padding: 8px 18px;
+  border-radius: 6px;
   cursor: pointer;
+}
+
+.exam-body {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 20px;
+}
+
+.question-panel {
+  background: white;
+  padding: 24px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.options {
+  margin-top: 20px;
+}
+
+.option {
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.option:hover {
+  background: #fce7f3;
+}
+
+.option.selected {
+  background: #ec4899;
+  color: white;
+  border-color: #ec4899;
+}
+
+.navigator {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  height: fit-content;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.nav-item {
+  padding: 10px;
+  text-align: center;
+  border-radius: 6px;
+  background: #f3f4f6;
+  cursor: pointer;
+}
+
+.nav-item.active {
+  border: 2px solid #ec4899;
+}
+
+.nav-item.answered {
+  background: #ec4899;
+  color: white;
+}
+
+.question-buttons{
+  display:flex;
+  justify-content:space-between;
+  margin-top:20px;
+}
+
+.prev-btn,
+.next-btn{
+  padding:10px 18px;
+  border:none;
+  border-radius:6px;
+  background:#e84393;
+  color:white;
+  cursor:pointer;
+}
+
+.prev-btn:disabled,
+.next-btn:disabled{
+  background:#ccc;
+  cursor:not-allowed;
+}
+
+.nav-item{
+  width:40px;
+  height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:6px;
+  cursor:pointer;
+  font-weight:500;
+}
+
+/* Câu hiện tại */
+.nav-item.active{
+  background:#e84393;
+  color:white;
+}
+
+/* Câu đã làm */
+.nav-item.answered{
+  background:#2ecc71;
+  color:white;
+}
+
+/* Câu chưa làm */
+.nav-item.unanswered{
+  background:#ecf0f1;
+  color:#555;
+}
+.flag-btn{
+  background:#f1c40f;
+  border:none;
+  padding:10px 16px;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.nav-item.flagged{
+  border:2px solid #f1c40f;
 }

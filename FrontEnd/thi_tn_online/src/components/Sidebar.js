@@ -11,7 +11,7 @@ const Sidebar = () => {
 
       <div className="sidebar-menu">
         <div className="menu-item active">Lớp học</div>
-        <div className="menu-item">Bài kiểm tra</div>
+        <div className="menu-item">Khóa Học</div>
       </div>
     </aside>
   );
