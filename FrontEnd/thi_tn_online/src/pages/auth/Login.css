@@ -35,6 +35,14 @@
   border-color: #3b5bcc;
 }
 
+.login-error {
+  margin-top: -6px;
+  margin-bottom: 14px;
+  color: #dc2626;
+  font-size: 13px;
+  text-align: left;
+}
+
 .login-forgot {
   text-align: right;
   font-size: 13px;

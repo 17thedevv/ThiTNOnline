@@ -1,52 +1,45 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
 import "./Profile.css";
 import defaultAvatar from "../../assets/images/steve.jpg";
+import { useAuth } from "../../contexts/AuthContext";
 
 const Profile = () => {
-  const location = useLocation();
-  const [showInfo, setShowInfo] = useState(true);
+  const { user } = useAuth();
 
-  // 🔑 MỖI LẦN VÀO /profile → reset lại
-  useEffect(() => {
-    setShowInfo(true);
-  }, [location.pathname]);
-
-  const user = {
-    name: "17thedev",
-    email: "17thedev@gmail.com",
-    avatar: defaultAvatar,
-    joinedAt: "01/2026",
-  };
+  const displayName = user?.username || "Người dùng";
+  const email = user?.email || "Chưa cập nhật";
+  const roleLabel =
+    user?.role === "teacher"
+      ? "Giáo viên"
+      : user?.role === "student"
+      ? "Học sinh"
+      : user?.role === "admin"
+      ? "Quản trị viên"
+      : "Chưa xác định";
 
   return (
     <div className="profile-page">
       <div className="profile-left">
         <h2>Hồ sơ cá nhân</h2>
-        <p>Quản lý thông tin tài khoản của bạn</p>
+        <p>Thông tin tài khoản và vai trò của bạn trong hệ thống.</p>
       </div>
 
       <div className="profile-right">
-        {showInfo && (
-          <div className="profile-card">
-            <img src={user.avatar} alt="avatar" className="profile-avatar" />
+        <div className="profile-card">
+          <img src={defaultAvatar} alt="avatar" className="profile-avatar" />
 
-            <h3>{user.name}</h3>
-            <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Tham gia từ:</strong> {user.joinedAt}</p>
+          <h3 className="profile-name">{displayName}</h3>
 
-            <div className="profile-actions">
-              <button className="profile-btn">Chỉnh sửa hồ sơ</button>
+          <span className="profile-role-badge">{roleLabel}</span>
 
-              <button
-                className="profile-btn outline"
-                onClick={() => setShowInfo(false)}
-              >
-                Ẩn thông tin
-              </button>
-            </div>
+          <div className="profile-info">
+            <p>
+              <strong>Email:</strong> {email}
+            </p>
+            <p>
+              <strong>Mã người dùng:</strong> {user?.id ?? "—"}
+            </p>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -1,17 +1,26 @@
 from django.db import models
 from django.conf import settings
 
+
 class Exam(models.Model):
     title = models.CharField(max_length=255)
     duration = models.IntegerField()
     subject = models.ForeignKey(
-        'subjects.Subject',
+        "subjects.Subject",
         on_delete=models.CASCADE,
-        related_name='exams'
+        related_name="exams",
     )
+    exam_class = models.ForeignKey(
+        "classes.Class",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="exams",
+    )
+    max_attempts = models.IntegerField(null=True, blank=True, default=None)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

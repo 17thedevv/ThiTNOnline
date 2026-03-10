@@ -1,4 +1,5 @@
 from django.urls import path, include
+from django.contrib import admin
 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -9,6 +10,7 @@ def home(request):
     return JsonResponse({"message": "Backend is running 🚀"})
 
 urlpatterns = [
+    path('admin/', admin.site.urls),
     path('', home),
     path('api/auth/', include('users.urls')),
     path('api/token/', TokenObtainPairView.as_view()),

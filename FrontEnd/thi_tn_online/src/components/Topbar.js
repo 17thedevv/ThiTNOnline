@@ -4,20 +4,25 @@ import { FaBell } from "react-icons/fa";
 import NotificationBox from "./NotificationBox";
 import "./Topbar.css";
 import defaultAvatar from "../assets/images/steve.jpg";
+import { useAuth } from "../contexts/AuthContext";
+import { logout as apiLogout } from "../api/auth";
 
 const TopBar = () => {
   const [open, setOpen] = useState(false);
   const [showNotify, setShowNotify] = useState(false);
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
-  const user = {
-    name: "17thedev",
-    avatar: defaultAvatar,
+  const displayName = user?.username || user?.name || "Người dùng";
+
+  const handleLogout = () => {
+    apiLogout();
+    logout();
+    navigate("/login");
   };
 
   return (
     <div className="topbar">
-
       {/* 🔔 Notification */}
       <div className="notify-wrapper">
         <button
@@ -38,16 +43,15 @@ const TopBar = () => {
       {/* 👤 Profile */}
       <div
         className="profile"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
+        onClick={() => setOpen((prev) => !prev)}
       >
-        <img src={user.avatar} alt="avatar" />
-        <span>{user.name}</span>
+        <img src={defaultAvatar} alt="avatar" />
+        <span>{displayName}</span>
 
         {open && (
           <div className="dropdown">
             <div onClick={() => navigate("/profile")}>Hồ sơ</div>
-            <div onClick={() => navigate("/login")}>Đăng xuất</div>
+            <div onClick={handleLogout}>Đăng xuất</div>
           </div>
         )}
       </div>

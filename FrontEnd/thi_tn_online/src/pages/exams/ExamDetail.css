@@ -65,6 +65,14 @@
   border-color: #ec4899;
 }
 
+.option.correct {
+  border-color: #16a34a;
+}
+
+.option.incorrect {
+  border-color: #dc2626;
+}
+
 .navigator {
   background: white;
   padding: 20px;
