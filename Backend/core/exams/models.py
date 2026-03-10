@@ -17,6 +17,13 @@ class Exam(models.Model):
 
 
 class Question(models.Model):
+    exam = models.ForeignKey(
+        Exam,
+        on_delete=models.CASCADE,
+        related_name='questions',
+        null=True,
+        blank=True,
+    )
     question_text = models.TextField()
 
     option_a = models.CharField(max_length=255, default="")
