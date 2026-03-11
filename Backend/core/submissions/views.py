@@ -77,9 +77,14 @@ class ClassSubmissionListView(generics.ListAPIView):
     serializer_class = SubmissionWithUserExamSerializer
 
     def get_queryset(self):
-        class_id = self.kwargs.get("class_id")
-        return (
-            Submission.objects.select_related("exam", "student")
-            .filter(exam__exam_class_id=class_id)
-            .order_by("-submitted_at")
-        )
+        try:
+            class_id = self.kwargs.get("class_id")
+            return (
+                Submission.objects.select_related("exam", "student")
+                .filter(exam__exam_class_id=class_id)
+                .exclude(exam__exam_class__isnull=True)
+                .order_by("-submitted_at")
+            )
+        except Exception as e:
+            print(f"Error in ClassSubmissionListView: {e}")
+            return Submission.objects.none()

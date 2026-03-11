@@ -42,8 +42,10 @@ const ClassDetail = () => {
         setLoadingSubs(false);
       } catch (e) {
         const msg =
-          e?.response?.data?.detail ||
-          "Không tải được thông tin lớp. Vui lòng thử lại.";
+          e?.response?.status === 403
+            ? "Bạn không có quyền truy cập lớp này. Vui lòng liên hệ giáo viên của lớp."
+            : e?.response?.data?.detail ||
+              "Không tải được thông tin lớp. Vui lòng thử lại.";
         setError(msg);
       } finally {
         setLoading(false);

@@ -1,8 +1,9 @@
 import "./Login.css";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getMe, login as loginApi } from "../../api/auth";
+import { FaUser, FaLock, FaGoogle, FaMicrosoft, FaQrcode, FaGraduationCap, FaEye, FaEyeSlash } from "react-icons/fa";
 
 const Login = () => {
   const { login } = useAuth();
@@ -11,10 +12,21 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {
+  useEffect(() => {
+    // Add entrance animation
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
     setError("");
     setIsSubmitting(true);
+    
     try {
       await loginApi({ username, password });
       const me = await getMe();
@@ -31,55 +43,127 @@ const Login = () => {
     }
   };
 
+  const handleSocialLogin = (provider) => {
+    // Handle social login logic here
+    console.log(`Login with ${provider}`);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="login-loading">
+        <div className="loading-spinner">
+          <FaGraduationCap className="spinner-icon" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="login-page">
-      <div className="login-card">
-        <h2 className="login-title">Đăng nhập</h2>
+      <div className="login-container">
+        <div className="login-card">
+          <div className="login-header">
+            <div className="login-logo">
+              <FaGraduationCap className="logo-icon" />
+            </div>
+            <h1 className="login-title">Chào mừng trở lại</h1>
+            <p className="login-subtitle">Đăng nhập vào tài khoản ThiTNOnline của bạn</p>
+          </div>
 
-        <input
-          type="text"
-          placeholder="Nhập số điện thoại, email hoặc username"
-          className="login-input"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
+          <form className="login-form" onSubmit={handleLogin}>
+            <div className="form-group">
+              <input
+                type="text"
+                placeholder="Email, tên đăng nhập hoặc số điện thoại"
+                className="login-input"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
 
-        <input
-          type="password"
-          placeholder="Mật khẩu"
-          className="login-input"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+            <div className="form-group">
+              <div className="password-input">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Mật khẩu"
+                  className="login-input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+            </div>
 
-        {error ? <div className="login-error">{error}</div> : null}
+            {error && <div className="login-error">{error}</div>}
 
-        {/* QUÊN MẬT KHẨU */}
-        <div
-          className="login-forgot"
-          onClick={() => navigate("/forgot-password")}
-        >
-          Quên mật khẩu?
-        </div>
+            <div className="login-options">
+              <label className="remember-me">
+                <input type="checkbox" />
+                <span>Ghi nhớ đăng nhập</span>
+              </label>
+              <div
+                className="forgot-password"
+                onClick={() => navigate("/forgot-password")}
+              >
+                Quên mật khẩu?
+              </div>
+            </div>
 
-        <button className="login-btn" onClick={handleLogin} disabled={isSubmitting}>
-          {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
-        </button>
+            <button 
+              type="submit"
+              className="login-btn" 
+              disabled={isSubmitting || !username || !password}
+            >
+              {isSubmitting ? (
+                <div className="btn-spinner">
+                  <div className="spinner"></div>
+                  Đang đăng nhập...
+                </div>
+              ) : (
+                "Đăng nhập"
+              )}
+            </button>
+          </form>
 
-        {/* ĐĂNG KÝ */}
-        <div className="login-register">
-          Bạn chưa có tài khoản?{" "}
-          <span onClick={() => navigate("/register")}>
-            Tạo một tài khoản mới
-          </span>
-        </div>
+          <div className="login-divider">
+            <span>Hoặc tiếp tục với</span>
+          </div>
 
-        <div className="login-or">Hoặc</div>
+          <div className="login-social">
+            <button 
+              className="social-btn google"
+              onClick={() => handleSocialLogin('google')}
+            >
+              Google
+            </button>
+            <button 
+              className="social-btn microsoft"
+              onClick={() => handleSocialLogin('microsoft')}
+            >
+              Microsoft
+            </button>
+            <button 
+              className="social-btn qrcode"
+              onClick={() => handleSocialLogin('qrcode')}
+            >
+              QR Code
+            </button>
+          </div>
 
-        <div className="login-social">
-          <button className="social-btn google">Google</button>
-          <button className="social-btn microsoft">Microsoft</button>
-          <button className="social-btn qrcode">QR code</button>
+          <div className="login-register">
+            Chưa có tài khoản?{" "}
+            <span className="register-link" onClick={() => navigate("/register")}>
+              Đăng ký ngay
+            </span>
+          </div>
         </div>
       </div>
     </div>

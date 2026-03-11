@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,6 +49,8 @@ INSTALLED_APPS = [
     'subjects',
     'exams',
     'submissions',
+    'notifications',
+    'chatbot',
 ]
 
 MIDDLEWARE = [
@@ -145,3 +152,13 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
 ]
+
+# OpenAI Configuration
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', 'your-openai-api-key-here')
+OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-3.5-turbo')
+OPENAI_MAX_TOKENS = int(os.environ.get('OPENAI_MAX_TOKENS', '150'))
+OPENAI_TEMPERATURE = float(os.environ.get('OPENAI_TEMPERATURE', '0.7'))
+
+# Google Gemini Configuration
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'your-gemini-api-key-here')
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')

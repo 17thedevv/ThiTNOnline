@@ -1,45 +1,101 @@
+import { useState, useEffect } from "react";
+import { notificationService } from "../api/notifications";
 import "./NotificationBox.css";
 
-const notifications = [
-  {
-    id: 1,
-    title: "Bạn có bài kiểm tra mới",
-    desc: "Lớp Lập trình Web vừa đăng bài kiểm tra mới",
-    time: "2 phút trước",
-    isNew: true,
-  },
-  {
-    id: 2,
-    title: "Bạn đã được thêm vào lớp mới",
-    desc: "Bạn vừa tham gia lớp Cơ sở dữ liệu",
-    time: "1 giờ trước",
-  },
-  {
-    id: 3,
-    title: "Kết quả đã có",
-    desc: "Điểm bài Toán chương 1 đã được công bố",
-    time: "Hôm qua",
-  },
-];
+const NotificationBox = ({ onClose, onNotificationRead }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-const NotificationBox = () => {
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const data = await notificationService.getNotifications();
+      setNotifications(data.notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await notificationService.markAsRead(notificationId);
+      setNotifications(prev =>
+        prev.map(n => 
+          n.id === notificationId ? { ...n, is_read: true, is_new: false } : n
+        )
+      );
+      if (onNotificationRead) {
+        onNotificationRead();
+      }
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications(prev =>
+        prev.map(n => ({ ...n, is_read: true, is_new: false }))
+      );
+      if (onNotificationRead) {
+        onNotificationRead();
+      }
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="notify-box">
+        <h3 className="notify-title">🔔 Thông báo</h3>
+        <div className="notify-loading">Đang tải...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="notify-box">
-      <h3 className="notify-title">🔔 Thông báo</h3>
+      <div className="notify-header">
+        <h3 className="notify-title">🔔 Thông báo</h3>
+        {notifications.length > 0 && (
+          <button 
+            className="mark-all-read-btn"
+            onClick={handleMarkAllAsRead}
+          >
+            Đánh dấu tất cả đã đọc
+          </button>
+        )}
+      </div>
 
       <div className="notify-list">
-        {notifications.map((n) => (
-          <div key={n.id} className="notify-item">
-            <div className="notify-content">
-              <div className="notify-head">
-                <span className="notify-text">{n.title}</span>
-                {n.isNew && <span className="notify-badge">Mới</span>}
+        {notifications.length === 0 ? (
+          <div className="notify-empty">Không có thông báo nào</div>
+        ) : (
+          notifications.map((n) => (
+            <div 
+              key={n.id} 
+              className={`notify-item ${n.is_read ? 'read' : 'unread'}`}
+              onClick={() => handleMarkAsRead(n.id)}
+            >
+              <div className="notify-content">
+                <div className="notify-head">
+                  <span className="notify-text">{n.title}</span>
+                  {n.is_new && <span className="notify-badge">Mới</span>}
+                </div>
+                <p className="notify-desc">{n.message}</p>
+                <span className="notify-time">{n.time_ago}</span>
               </div>
-              <p className="notify-desc">{n.desc}</p>
-              <span className="notify-time">{n.time}</span>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
