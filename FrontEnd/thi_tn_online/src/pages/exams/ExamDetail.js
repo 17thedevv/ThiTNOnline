@@ -1,9 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import "./ExamDetail.css";
 import { getExam, getExamQuestions } from "../../api/exams";
-import { submitExam, listSubmissions } from "../../api/submissions";
+import { submitExam } from "../../api/submissions";
 import { useAuth } from "../../contexts/AuthContext";
+import {
+  FaClock,
+  FaFlag,
+  FaCheckCircle,
+  FaArrowLeft,
+  FaArrowRight,
+  FaPaperPlane,
+  FaQuestionCircle,
+  FaList,
+  FaLightbulb,
+  FaExclamationTriangle,
+  FaStar,
+  FaTrophy,
+  FaRedo,
+  FaBook,
+  FaUserGraduate
+} from "react-icons/fa";
 
 const ExamDetail = () => {
   const { examId } = useParams();
@@ -14,27 +30,30 @@ const ExamDetail = () => {
   const [exam, setExam] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [current, setCurrent] = useState(0);
-  const [answers, setAnswers] = useState({}); // questionId -> letter
+  const [answers, setAnswers] = useState({});
   const [flagged, setFlagged] = useState({});
   const [timeLeft, setTimeLeft] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(true);
-  const [attemptInfo, setAttemptInfo] = useState({ max: null, used: 0 });
 
+  // UI states
+  const [showQuestionPanel, setShowQuestionPanel] = useState(true);
+  const [showTimer, setShowTimer] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+  const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
+
+  // Data loading effect
   useEffect(() => {
     const load = async () => {
       if (!examId) return;
       setLoading(true);
       setError("");
       try {
-        const [examData, questionData, allSubs] = await Promise.all([
+        const [examData, questionData] = await Promise.all([
           getExam({ examId }),
           getExamQuestions({ examId }),
-          listSubmissions(),
         ]);
         setExam(examData);
         const normalized = (questionData || []).map((q) => ({
@@ -49,298 +68,757 @@ const ExamDetail = () => {
           const secs = (examData.duration || 0) * 60;
           setTimeLeft(secs > 0 ? secs : null);
         }
-
-        const examIdNum = Number(examId);
-        const mySubs = (allSubs || [])
-          .filter((s) => s.exam === examIdNum)
-          .sort(
-            (a, b) =>
-              new Date(b.submitted_at || 0).getTime() -
-              new Date(a.submitted_at || 0).getTime()
-          );
-        setHistory(mySubs);
-        setLoadingHistory(false);
-
-        const maxAttempts =
-          typeof examData.max_attempts === "number"
-            ? examData.max_attempts
-            : null;
-        const used = mySubs.length;
-        setAttemptInfo({ max: maxAttempts, used });
       } catch (e) {
-        const msg =
-          e?.response?.data?.detail ||
-          "Không tải được đề thi. Vui lòng thử lại.";
-        setError(msg);
+        setError("Không tải được đề thi. Vui lòng thử lại.");
       } finally {
         setLoading(false);
       }
     };
+
     load();
   }, [examId, isTeacherLike]);
 
-  useEffect(() => {
-    if (isTeacherLike || timeLeft == null || submitResult) return;
-
-    if (timeLeft <= 0) {
-      handleSubmit(true);
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev != null ? prev - 1 : prev));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft, isTeacherLike, submitResult]);
-
-  const currentQuestion = useMemo(
-    () => (questions.length > 0 ? questions[current] : null),
-    [questions, current]
-  );
-
-  const handleSelect = (optIndex) => {
-    if (!currentQuestion || isTeacherLike) return;
-    const letter = String.fromCharCode(65 + optIndex);
-    setAnswers((prev) => ({
-      ...prev,
-      [currentQuestion.id]: letter,
-    }));
+  // Helper functions
+  const formatTime = (seconds) => {
+    if (!seconds) return "00:00:00";
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const toggleFlag = () => {
-    if (!currentQuestion) return;
-    setFlagged((prev) => ({
-      ...prev,
-      [currentQuestion.id]: !prev[currentQuestion.id],
-    }));
+  const getTimeColor = () => {
+    if (!timeLeft) return "#6b7280";
+    const minutes = Math.floor(timeLeft / 60);
+    if (minutes <= 5) return "#dc2626";
+    if (minutes <= 10) return "#f59e0b";
+    return "#10b981";
   };
 
-  const formatTime = () => {
-    if (timeLeft == null) return "Không giới hạn";
-    const safe = Math.max(0, timeLeft);
-    const min = Math.floor(safe / 60);
-    const sec = safe % 60;
-    return `${min}:${sec < 10 ? "0" : ""}${sec}`;
+  const getProgress = () => {
+    const answered = Object.keys(answers).length;
+    return Math.round((answered / questions.length) * 100);
   };
 
-  const nextQuestion = () => {
-    if (current < questions.length - 1) {
-      setCurrent((idx) => idx + 1);
-    }
+  const getStats = () => {
+    const answered = Object.keys(answers).length;
+    const flaggedCount = Object.values(flagged).filter(Boolean).length;
+    const remaining = questions.length - answered;
+    return { answered, flaggedCount, remaining };
   };
 
-  const prevQuestion = () => {
-    if (current > 0) {
-      setCurrent((idx) => idx - 1);
-    }
+  // Event handlers
+  const handleAnswer = (questionId, answer) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
-  const handleSubmit = async (auto = false) => {
-    if (isTeacherLike) return;
-    if (!examId || questions.length === 0) return;
+  const handleFlag = (questionId) => {
+    setFlagged((prev) => ({ ...prev, [questionId]: !prev[questionId] }));
+  };
 
-    const answeredCount = Object.keys(answers).length;
-    const unanswered = questions.length - answeredCount;
+  const handleNext = () => {
+    if (current < questions.length - 1) setCurrent(current + 1);
+  };
 
-    if (!auto && unanswered > 0) {
-      const confirmSubmit = window.confirm(
-        `Bạn còn ${unanswered} câu chưa làm. Vẫn nộp bài?`
-      );
-      if (!confirmSubmit) return;
-    }
+  const handlePrev = () => {
+    if (current > 0) setCurrent(current - 1);
+  };
 
-    if (attemptInfo.max != null && attemptInfo.used >= attemptInfo.max) {
-      setError("Bạn đã hết số lần làm bài cho đề thi này.");
-      return;
-    }
+  const handleJump = (index) => {
+    setCurrent(index);
+  };
 
+  const handleSubmit = async () => {
+    if (submitting) return;
+    
+    console.log('Submitting exam:', {
+      examId: parseInt(examId),
+      answers: answers,
+      totalQuestions: questions.length,
+      answeredCount: Object.keys(answers).length
+    });
+    
     setSubmitting(true);
-    setError("");
     try {
       const result = await submitExam({
-        examId: Number(examId),
-        answers,
+        examId: parseInt(examId),
+        answers: answers,
       });
+      console.log('Submit result:', result);
       setSubmitResult(result);
-      setHistory((prev) => [result, ...(prev || [])]);
-      setAttemptInfo((prev) => ({
-        max: prev.max,
-        used: prev.used + 1,
-      }));
     } catch (e) {
-      const msg =
-        e?.response?.data?.detail ||
-        "Nộp bài thất bại. Vui lòng thử lại.";
-      setError(msg);
+      console.error('Submit error:', e);
+      setError("Nộp bài thất bại. Vui lòng thử lại.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  return (
-    <div className="exam-container">
-      <div className="exam-header">
-        <div>
-          <h2>{exam ? exam.title : "Đang tải đề thi..."}</h2>
-          <div style={{ fontSize: 14, color: "#6b7280" }}>
-            {isTeacherLike
-              ? "Chế độ xem đề (giáo viên)"
-              : "Chế độ làm bài (học sinh)"}
+  // Timer effects (after function definitions)
+  useEffect(() => {
+    if (!timeLeft || timeLeft <= 0 || isTeacherLike) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, isTeacherLike]);
+
+  // Auto submit when time runs out
+  useEffect(() => {
+    if (timeLeft === 0 && !submitting && !isTeacherLike) {
+      handleSubmit();
+    }
+  }, [timeLeft, submitting, isTeacherLike, handleSubmit]);
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: 'white',
+        flexDirection: 'column',
+        gap: '20px'
+      }}>
+        <div style={{
+          width: '60px',
+          height: '60px',
+          border: '4px solid rgba(255, 255, 255, 0.3)',
+          borderTop: '4px solid white',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        <h2>Đang tải đề thi...</h2>
+        <p>Vui lòng đợi trong giây lát</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+        color: 'white'
+      }}>
+        <div style={{ textAlign: 'center', maxWidth: '400px' }}>
+          <FaExclamationTriangle style={{ fontSize: '64px', marginBottom: '20px' }} />
+          <h2>Đã có lỗi xảy ra</h2>
+          <p>{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 24px',
+              background: 'white',
+              color: '#dc2626',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              marginTop: '20px'
+            }}
+          >
+            <FaRedo /> Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (submitResult) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+      }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          padding: '40px',
+          maxWidth: '600px',
+          width: '90%',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+            <FaTrophy style={{ fontSize: '64px', color: '#fbbf24', marginBottom: '16px' }} />
+            <h2>Nộp bài thành công!</h2>
           </div>
-          {!isTeacherLike && !loadingHistory && (
-            <div style={{ fontSize: 13, color: "#4b5563", marginTop: 4 }}>
-              {history.length === 0 ? (
-                <span>Bạn chưa làm đề này lần nào.</span>
-              ) : (
-                <span>
-                  Lần gần nhất: điểm{" "}
-                  <strong>{history[0].score}</strong> ·{" "}
-                  {history[0].submitted_at
-                    ? new Date(
-                        history[0].submitted_at
-                      ).toLocaleString()
-                    : "chưa rõ thời gian"}
-                  {history.length > 1
-                    ? ` · Tổng số lần làm: ${history.length}`
-                    : ""}
-                  {attemptInfo.max != null && (
-                    <>
-                      {" "}
-                      · Giới hạn: {attemptInfo.max} lần, đã dùng{" "}
-                      {Math.min(attemptInfo.used, attemptInfo.max)} lần
-                    </>
-                  )}
-                </span>
-              )}
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: '16px',
+            marginBottom: '30px'
+          }}>
+            <div style={{
+              background: '#eff6ff',
+              color: '#3b82f6',
+              padding: '20px',
+              borderRadius: '12px',
+              textAlign: 'center'
+            }}>
+              <FaStar style={{ fontSize: '24px', marginBottom: '8px' }} />
+              <h3 style={{ margin: '0', fontSize: '24px', fontWeight: '700' }}>{submitResult.score || 0}</h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '14px', opacity: 0.8 }}>Điểm số</p>
+            </div>
+            
+            <div style={{
+              background: '#d1fae5',
+              color: '#10b981',
+              padding: '20px',
+              borderRadius: '12px',
+              textAlign: 'center'
+            }}>
+              <FaCheckCircle style={{ fontSize: '24px', marginBottom: '8px' }} />
+              <h3 style={{ margin: '0', fontSize: '24px', fontWeight: '700' }}>{submitResult.correct || 0}</h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '14px', opacity: 0.8 }}>Câu đúng</p>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button 
+              onClick={() => window.history.back()}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 24px',
+                background: '#e5e7eb',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              <FaArrowLeft /> Quay lại
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const stats = getStats();
+  const question = questions[current];
+
+  if (!question || questions.length === 0) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+        color: 'white'
+      }}>
+        <div style={{ textAlign: 'center', maxWidth: '400px' }}>
+          <FaExclamationTriangle style={{ fontSize: '64px', marginBottom: '20px' }} />
+          <h2>Không có câu hỏi</h2>
+          <p>Đề thi này chưa có câu hỏi nào.</p>
+          <button 
+            onClick={() => window.history.back()}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 24px',
+              background: 'white',
+              color: '#dc2626',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              marginTop: '20px'
+            }}
+          >
+            <FaArrowLeft /> Quay lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: darkMode ? '#1a1a2e' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      {/* Header */}
+      <header style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '20px 30px',
+        background: darkMode ? '#2d3748' : 'white',
+        borderBottom: '1px solid #e2e8f0',
+        color: darkMode ? 'white' : '#1a202c'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <button 
+            onClick={() => window.history.back()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 16px',
+              background: '#e2e8f0',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}
+          >
+            <FaArrowLeft /> Thoát
+          </button>
+          <div>
+            <h1 style={{ margin: '0', fontSize: '24px', fontWeight: 'bold' }}>{exam?.title}</h1>
+            <div style={{ display: 'flex', gap: '20px', marginTop: '4px', fontSize: '14px', color: '#718096' }}>
+              <span><FaBook /> {exam?.subject?.name || 'Không xác định'}</span>
+              <span><FaUserGraduate /> {user?.username}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              onClick={() => setShowTimer(!showTimer)}
+              style={{
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: showTimer ? '#3b82f6' : '#e2e8f0',
+                color: showTimer ? 'white' : '#4a5568',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              <FaClock />
+            </button>
+            <button 
+              onClick={() => setShowQuestionPanel(!showQuestionPanel)}
+              style={{
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: showQuestionPanel ? '#3b82f6' : '#e2e8f0',
+                color: showQuestionPanel ? 'white' : '#4a5568',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              <FaList />
+            </button>
+            <button 
+              onClick={() => setDarkMode(!darkMode)}
+              style={{
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: darkMode ? '#3b82f6' : '#e2e8f0',
+                color: darkMode ? 'white' : '#4a5568',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              <FaLightbulb />
+            </button>
+          </div>
+          
+          {showTimer && !isTeacherLike && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 16px',
+              background: 'white',
+              borderRadius: '8px',
+              fontWeight: 'bold',
+              fontSize: '18px',
+              color: getTimeColor()
+            }}>
+              <FaClock />
+              <span>{formatTime(timeLeft)}</span>
             </div>
           )}
         </div>
+      </header>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div className="exam-timer">⏳ {formatTime()}</div>
-          {!isTeacherLike && (
-            <button
-              className="submit-btn"
-              onClick={handleSubmit}
-              disabled={
-                submitting ||
-                !!submitResult ||
-                (attemptInfo.max != null &&
-                  attemptInfo.used >= attemptInfo.max)
-              }
-            >
-              {attemptInfo.max != null &&
-              attemptInfo.used >= attemptInfo.max &&
-              !submitResult
-                ? "Đã hết lượt làm"
-                : submitResult
-                ? `Đã nộp (Điểm: ${submitResult.score})`
-                : submitting
-                ? "Đang nộp..."
-                : "Nộp bài"}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {error && (
-        <p style={{ color: "#dc2626", marginTop: 8 }}>{error}</p>
-      )}
-
-      {loading ? (
-        <p>Đang tải đề thi...</p>
-      ) : !currentQuestion ? (
-        <p>Đề thi chưa có câu hỏi.</p>
-      ) : (
-        <div className="exam-body">
-          <div className="question-panel">
-            <h3>
-              Câu {current + 1}: {currentQuestion.text}
+      <div style={{ display: 'flex', height: 'calc(100vh - 100px)' }}>
+        {/* Question Panel */}
+        {showQuestionPanel && (
+          <aside style={{
+            width: '300px',
+            background: darkMode ? '#2d3748' : 'white',
+            borderRight: '1px solid #e2e8f0',
+            overflowY: 'auto',
+            padding: '20px',
+            color: darkMode ? 'white' : '#1a202c'
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>
+              <FaList /> Danh sách câu hỏi
             </h3>
-
-            <div className="options">
-              {currentQuestion.options.map((opt, index) => {
-                const letter = String.fromCharCode(65 + index);
-                const selected =
-                  answers[currentQuestion.id] === letter;
-                const isCorrect =
-                  currentQuestion.correctAnswer &&
-                  currentQuestion.correctAnswer.toUpperCase() ===
-                    letter.toUpperCase();
-                const showResult = submitResult || isTeacherLike;
-
-                let extraClass = "";
-                if (showResult) {
-                  if (isCorrect) {
-                    extraClass = "correct";
-                  } else if (selected && !isCorrect) {
-                    extraClass = "incorrect";
-                  }
-                }
-
+            
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{
+                height: '8px',
+                background: '#e2e8f0',
+                borderRadius: '4px',
+                overflow: 'hidden',
+                marginBottom: '8px'
+              }}>
+                <div style={{
+                  height: '100%',
+                  background: '#3b82f6',
+                  width: `${getProgress()}%`,
+                  transition: 'width 0.3s ease'
+                }}></div>
+              </div>
+              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#3b82f6' }}>{getProgress()}%</span>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              marginBottom: '24px',
+              padding: '16px',
+              background: darkMode ? '#4a5568' : '#f7fafc',
+              borderRadius: '8px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                <FaCheckCircle style={{ color: '#48bb78' }} />
+                <span>Đã trả lời: {stats.answered}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                <FaFlag style={{ color: '#ed8936' }} />
+                <span>Đã đánh dấu: {stats.flaggedCount}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                <FaQuestionCircle style={{ color: '#718096' }} />
+                <span>Còn lại: {stats.remaining}</span>
+              </div>
+            </div>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(5, 1fr)',
+              gap: '8px',
+              marginBottom: '24px'
+            }}>
+              {questions.map((q, index) => {
+                const isAnswered = answers[q.id];
+                const isFlagged = flagged[q.id];
+                const isCurrent = index === current;
+                
                 return (
-                  <div
-                    key={index}
-                    className={`option ${
-                      selected ? "selected" : ""
-                    } ${extraClass} ${isTeacherLike ? "readonly" : ""}`}
-                    onClick={() => handleSelect(index)}
+                  <button
+                    key={q.id}
+                    onClick={() => handleJump(index)}
+                    style={{
+                      aspectRatio: '1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: isCurrent ? '#bee3f8' : isAnswered ? '#c6f6d5' : isFlagged ? '#feebc8' : '#e2e8f0',
+                      border: isCurrent ? '2px solid #3182ce' : isAnswered ? '2px solid #48bb78' : isFlagged ? '2px solid #ed8936' : '2px solid transparent',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 'bold'
+                    }}
                   >
-                    <strong style={{ marginRight: 8 }}>{letter}.</strong>
-                    {opt}
-                  </div>
+                    {index + 1}
+                  </button>
                 );
               })}
             </div>
+            
+            <button 
+              onClick={() => setShowConfirmSubmit(true)}
+              disabled={stats.answered === 0}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '12px',
+                background: stats.answered === 0 ? '#e2e8f0' : '#3b82f6',
+                color: stats.answered === 0 ? '#a0aec0' : 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: stats.answered === 0 ? 'not-allowed' : 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              <FaPaperPlane /> Nộp bài
+            </button>
+          </aside>
+        )}
 
-            {!isTeacherLike && (
-              <div className="question-buttons">
-                <button
-                  className="prev-btn"
-                  onClick={prevQuestion}
-                  disabled={current === 0}
+        {/* Main Content */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '30px', overflowY: 'auto' }}>
+          <div style={{
+            background: darkMode ? '#2d3748' : 'white',
+            borderRadius: '16px',
+            padding: '30px',
+            marginBottom: '20px',
+            flex: 1,
+            color: darkMode ? 'white' : '#1a202c'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '24px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6' }}>
+                  Câu {current + 1}/{questions.length}
+                </span>
+                <button 
+                  onClick={() => handleFlag(question.id)}
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: flagged[question.id] ? '#feebc8' : '#e2e8f0',
+                    color: flagged[question.id] ? '#d69e2e' : '#4a5568',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
                 >
-                  ← Câu trước
-                </button>
-
-                <button className="flag-btn" onClick={toggleFlag}>
-                  {flagged[currentQuestion.id]
-                    ? "Bỏ phân vân"
-                    : "Phân vân"}
-                </button>
-
-                <button
-                  className="next-btn"
-                  onClick={nextQuestion}
-                  disabled={current === questions.length - 1}
-                >
-                  Câu tiếp →
+                  {flagged[question.id] ? <FaFlag /> : <FaFlag />}
                 </button>
               </div>
-            )}
+            </div>
+            
+            <div style={{ marginBottom: '30px' }}>
+              <div style={{ lineHeight: '1.6', marginBottom: '16px', fontSize: '18px' }}>
+                {question.text}
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {question.options && question.options.map((option, index) => {
+                if (!option) return null;
+                const letter = ['A', 'B', 'C', 'D'][index];
+                const isSelected = answers[question.id] === letter;
+                
+                return (
+                  <button
+                    key={index}
+                    onClick={() => handleAnswer(question.id, letter)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px',
+                      padding: '20px',
+                      background: isSelected ? '#bee3f8' : '#f7fafc',
+                      border: isSelected ? '2px solid #3182ce' : '2px solid #e2e8f0',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                  >
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: '#3b82f6',
+                      color: 'white',
+                      borderRadius: '50%',
+                      fontWeight: 'bold'
+                    }}>
+                      {letter}
+                    </div>
+                    <div style={{ flex: 1, lineHeight: '1.5' }}>{option}</div>
+                    {isSelected && <FaCheckCircle style={{ color: '#48bb78', fontSize: '20px' }} />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-
-          <div className="navigator">
-            {questions.map((q, index) => {
-              const hasAnswer = !!answers[q.id];
-              const isCurrent = current === index;
-              const isFlagged = flagged[q.id];
-
-              return (
-                <div
-                  key={q.id}
-                  className={`nav-item
-                  ${isCurrent ? "active" : ""}
-                  ${hasAnswer ? "answered" : "unanswered"}
-                  ${isFlagged ? "flagged" : ""}
-                `}
-                  onClick={() => setCurrent(index)}
-                >
-                  {index + 1}
+          
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '20px'
+          }}>
+            <button 
+              onClick={handlePrev}
+              disabled={current === 0}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 24px',
+                background: '#e2e8f0',
+                color: '#4a5568',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: current === 0 ? 'not-allowed' : 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              <FaArrowLeft /> Câu trước
+            </button>
+            
+            <div style={{ fontWeight: 'bold', color: '#718096' }}>
+              {current + 1} / {questions.length}
+            </div>
+            
+            <button 
+              onClick={handleNext}
+              disabled={current === questions.length - 1}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 24px',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: current === questions.length - 1 ? 'not-allowed' : 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Câu tiếp <FaArrowRight />
+            </button>
+          </div>
+        </main>
+      </div>
+      
+      {/* Submit Confirmation Modal */}
+      {showConfirmSubmit && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '30px',
+            maxWidth: '500px',
+            width: '90%'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+              <FaExclamationTriangle style={{ fontSize: '24px', color: '#d69e2e' }} />
+              <h3 style={{ margin: 0, fontSize: '20px' }}>Xác nhận nộp bài</h3>
+            </div>
+            
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                marginBottom: '16px',
+                padding: '16px',
+                background: '#f7fafc',
+                borderRadius: '8px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Tổng số câu:</span>
+                  <strong>{questions.length}</strong>
                 </div>
-              );
-            })}
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Đã trả lời:</span>
+                  <strong style={{ color: '#48bb78' }}>{stats.answered}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Chưa trả lời:</span>
+                  <strong style={{ color: '#d69e2e' }}>{stats.remaining}</strong>
+                </div>
+              </div>
+              
+              {stats.remaining > 0 && (
+                <div style={{
+                  padding: '12px',
+                  background: '#feebc8',
+                  borderRadius: '8px',
+                  borderLeft: '4px solid #d69e2e'
+                }}>
+                  <p style={{ margin: 0, color: '#975a16' }}>
+                    Bạn còn {stats.remaining} câu chưa trả lời. Bạn có chắc chắn muốn nộp bài?
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setShowConfirmSubmit(false)}
+                style={{
+                  padding: '12px 20px',
+                  background: '#e2e8f0',
+                  color: '#4a5568',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                Tiếp tục làm bài
+              </button>
+              <button 
+                onClick={handleSubmit}
+                disabled={submitting}
+                style={{
+                  padding: '12px 20px',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: submitting ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                {submitting ? 'Đang nộp...' : 'Xác nhận nộp bài'}
+              </button>
+            </div>
           </div>
         </div>
       )}
