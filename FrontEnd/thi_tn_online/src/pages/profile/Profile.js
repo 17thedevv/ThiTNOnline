@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { getProfile, updateProfile, changePassword } from "../../api/profile";
+import { getProfile, updateProfile, uploadAvatar, changePassword } from "../../api/profile";
 import { useNavigate } from "react-router-dom";
 import { 
   FaUser, 
@@ -12,9 +12,12 @@ import {
   FaSpinner,
   FaGraduationCap,
   FaChalkboardTeacher,
-  FaUserGraduate
+  FaUserGraduate,
+  FaCamera,
+  FaUpload
 } from "react-icons/fa";
 import "./Profile.css";
+import defaultAvatar from "../../assets/images/steve.jpg";
 
 const Profile = () => {
   const { user, login } = useAuth();
@@ -24,11 +27,24 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef(null);
+  
+  // Helper function to get full name
+  const getUserFullName = (user) => {
+    if (!user) return 'Không xác định';
+    const firstName = user.first_name || '';
+    const lastName = user.last_name || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    return fullName || user.username || 'Không xác định';
+  };
   
   // Form states
   const [formData, setFormData] = useState({
     email: "",
-    full_name: "",
+    first_name: "",
+    last_name: "",
   });
   
   // Password change states
@@ -60,10 +76,12 @@ const Profile = () => {
   const loadProfile = async () => {
     try {
       const data = await getProfile();
+      console.log('Profile data:', data); // Debug log
       setProfile(data);
       setFormData({
         email: data.email || "",
-        full_name: data.full_name || "",
+        first_name: data.first_name || "",
+        last_name: data.last_name || "",
       });
     } catch (err) {
       console.error('Profile load error:', err);
@@ -111,12 +129,10 @@ const Profile = () => {
     setSuccess("");
 
     try {
-      // Split full_name into first_name and last_name for backend
-      const nameParts = formData.full_name.trim().split(' ');
       const updateData = {
         email: formData.email,
-        first_name: nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : nameParts[0] || '',
-        last_name: nameParts.length > 1 ? nameParts[nameParts.length - 1] : '',
+        first_name: formData.first_name,
+        last_name: formData.last_name,
       };
       
       const updatedProfile = await updateProfile(updateData);
@@ -213,6 +229,95 @@ const Profile = () => {
     }
   };
 
+  // Avatar handling functions
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Vui lòng chọn file ảnh (JPG, PNG, GIF)');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Kích thước ảnh không được vượt quá 5MB');
+        return;
+      }
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAvatarUpload = async () => {
+    if (!avatarPreview) return;
+
+    setUploadingAvatar(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      // Convert base64 to blob
+      const response = await fetch(avatarPreview);
+      const blob = await response.blob();
+      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+
+      // Upload avatar using the correct API endpoint
+      const result = await uploadAvatar(file);
+      setSuccess("Cập nhật avatar thành công!");
+      setAvatarPreview(null);
+      
+      // Update profile state with new avatar URL
+      setProfile(prev => ({
+        ...prev,
+        avatar: result.avatar_url
+      }));
+      
+      // Update auth context
+      if (user) {
+        login({ ...user, avatar: result.avatar_url });
+      }
+    } catch (err) {
+      console.error('Avatar upload error:', err);
+      setError(err.response?.data?.error || "Cập nhật avatar thất bại");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const cancelAvatarChange = () => {
+    setAvatarPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const getAvatarUrl = (profile) => {
+    if (avatarPreview) return avatarPreview;
+    
+    if (profile?.avatar && profile.avatar !== null && profile.avatar !== '') {
+      console.log('Profile avatar:', profile.avatar); // Debug log
+      // If avatar is a full URL, return as is
+      if (profile.avatar.startsWith('http')) {
+        return profile.avatar;
+      }
+      // If avatar is a relative path, prepend base URL
+      return `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${profile.avatar}`;
+    }
+    
+    console.log('Profile avatar is null or empty, using default'); // Debug log
+    return defaultAvatar; // Fallback to default avatar
+  };
+
   if (loading) {
     return (
       <div className="profile-loading">
@@ -239,8 +344,66 @@ const Profile = () => {
       <div className="profile-content">
         {/* Profile Overview */}
         <div className="profile-overview">
+          <div className="avatar-section">
+            <div className="avatar-container">
+              <img 
+                src={getAvatarUrl(profile)} 
+                alt="Avatar" 
+                className="profile-avatar"
+              />
+              <button 
+                className="avatar-upload-btn"
+                onClick={handleAvatarClick}
+                title="Đổi avatar"
+              >
+                <FaCamera />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                style={{ display: 'none' }}
+              />
+            </div>
+
+            {avatarPreview && (
+              <div className="avatar-preview-actions">
+                <div className="preview-image">
+                  <img src={avatarPreview} alt="Preview" />
+                </div>
+                <div className="preview-buttons">
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleAvatarUpload}
+                    disabled={uploadingAvatar}
+                  >
+                    {uploadingAvatar ? (
+                      <>
+                        <FaSpinner className="fa-spin" />
+                        Đang tải lên...
+                      </>
+                    ) : (
+                      <>
+                        <FaUpload />
+                        Lưu avatar
+                      </>
+                    )}
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={cancelAvatarChange}
+                    disabled={uploadingAvatar}
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="user-info">
-            <h2>{profile?.display_name || profile?.username}</h2>
+            <h2>{getUserFullName(profile)}</h2>
             <p className="username">@{profile?.username}</p>
             <div className="user-role">
               {getRoleIcon(profile?.role)}
@@ -269,14 +432,27 @@ const Profile = () => {
 
               <div className="form-group">
                 <label>
-                  <FaUser /> Họ và tên
+                  <FaUser /> Họ
                 </label>
                 <input
                   type="text"
-                  name="full_name"
-                  value={formData.full_name}
+                  name="last_name"
+                  value={formData.last_name}
                   onChange={handleInputChange}
-                  placeholder="Nhập họ và tên của bạn"
+                  placeholder="Nhập họ của bạn"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>
+                  <FaUser /> Tên
+                </label>
+                <input
+                  type="text"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleInputChange}
+                  placeholder="Nhập tên của bạn"
                 />
               </div>
 

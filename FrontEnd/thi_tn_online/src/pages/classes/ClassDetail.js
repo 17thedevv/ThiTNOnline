@@ -32,6 +32,25 @@ const ClassDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  // Helper function to get full name
+  const getStudentFullName = (student) => {
+    if (!student) return 'Không xác định';
+    
+    // Try to get from student object first
+    const firstName = student.first_name || '';
+    const lastName = student.last_name || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    
+    if (fullName) return fullName;
+    
+    // Fallback to other possible fields
+    return student.student_full_name || 
+           student.full_name || 
+           student.display_name || 
+           student.username || 
+           'Không xác định';
+  };
+
   const role = user?.role;
   const isTeacherLike = role === "teacher" || role === "admin";
 
@@ -61,6 +80,7 @@ const ClassDetail = () => {
           listExams({ class_id: classId }),
           listClassSubmissions({ classId }),
         ]);
+        console.log('Submissions data:', subs); // Debug log
         setExams(exs || []);
         setLoadingExams(false);
         setSubmissions(subs || []);
@@ -123,12 +143,14 @@ const ClassDetail = () => {
   };
 
   const filteredStudents = cls?.students?.filter(student =>
+    getStudentFullName(student).toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.email.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
   const filteredSubmissions = submissions.filter(sub => {
-    const matchesSearch = sub.student_username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const studentFullName = sub.student_full_name || sub.student_username || '';
+    const matchesSearch = studentFullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           sub.exam_title?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === "all" || 
                          (filterStatus === "passed" && sub.score >= 5) ||
@@ -296,13 +318,15 @@ const ClassDetail = () => {
                   <div className="overview-card">
                     <h3><FaStar /> Hoạt động gần đây</h3>
                     <div className="recent-activities">
-                      {submissions.slice(0, 5).map(sub => (
+                      {submissions.slice(0, 5).map(sub => {
+                        console.log('Sub item:', sub); // Debug each submission
+                        return (
                         <div key={sub.id} className="activity-item">
                           <div className="activity-icon">
                             <FaUserGraduate />
                           </div>
                           <div className="activity-content">
-                            <p><strong>{sub.student_username}</strong> đã nộp bài <strong>{sub.exam_title}</strong></p>
+                            <p><strong>{sub.student_full_name || sub.student_username || 'Không xác định'}</strong> đã nộp bài <strong>{sub.exam_title}</strong></p>
                             <span className="activity-time">
                               {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : ''}
                             </span>
@@ -313,7 +337,8 @@ const ClassDetail = () => {
                             </span>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                       {submissions.length === 0 && (
                         <p className="no-activities">Chưa có hoạt động nào.</p>
                       )}
@@ -353,7 +378,7 @@ const ClassDetail = () => {
                           <FaUserGraduate />
                         </div>
                         <div className="student-info">
-                          <h4>{student.username}</h4>
+                          <h4>{getStudentFullName(student)}</h4>
                           <p>{student.email}</p>
                         </div>
                         {isTeacherLike && (
@@ -384,7 +409,7 @@ const ClassDetail = () => {
                     <button
                       className="create-btn"
                       onClick={() =>
-                        navigate(`/subjects/0/create-exam`, {
+                        navigate(`/exams/create`, {
                           state: { classId },
                         })
                       }
@@ -407,7 +432,7 @@ const ClassDetail = () => {
                       <button
                         className="create-btn"
                         onClick={() =>
-                          navigate(`/subjects/0/create-exam`, {
+                          navigate(`/exams/create`, {
                             state: { classId },
                           })
                         }
@@ -434,7 +459,10 @@ const ClassDetail = () => {
                             <FaEye /> Xem / Thi
                           </button>
                           {isTeacherLike && (
-                            <button className="edit-btn">
+                            <button 
+                              className="edit-btn"
+                              onClick={() => navigate(`/exams/${exam.id}/edit`)}
+                            >
                               <FaEdit /> Chỉnh sửa
                             </button>
                           )}
@@ -449,31 +477,28 @@ const ClassDetail = () => {
             {activeTab === "submissions" && isTeacherLike && (
               <div className="submissions-content">
                 <div className="content-header">
-                  <h3><FaChartLine /> Bảng điểm</h3>
-                  <div className="search-filter">
-                    <div className="search-box">
-                      <FaSearch className="search-icon" />
-                      <input
-                        type="text"
-                        placeholder="Tìm kiếm bài nộp..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
-                    <div className="filter-box">
-                      <FaFilter className="filter-icon" />
+                  <h3><FaClipboardList /> Bài nộp</h3>
+                  <div className="filter-controls">
+                    <div className="search-filter-group">
+                      <div className="search-box">
+                        <FaSearch className="search-icon" />
+                        <input
+                          type="text"
+                          placeholder="Tìm kiếm học sinh hoặc bài thi..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                      </div>
                       <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
+                        className="filter-select"
                       >
                         <option value="all">Tất cả</option>
                         <option value="passed">Đạt</option>
                         <option value="failed">Không đạt</option>
                       </select>
                     </div>
-                    <button className="export-btn">
-                      <FaDownload /> Xuất Excel
-                    </button>
                   </div>
                 </div>
 
@@ -506,7 +531,7 @@ const ClassDetail = () => {
                             <td>
                               <div className="student-cell">
                                 <FaUserGraduate className="student-icon" />
-                                <span>{sub.student_username || `#${sub.student}`}</span>
+                                <span>{sub.student_full_name || sub.student_username || `#${sub.student}`}</span>
                               </div>
                             </td>
                             <td>{sub.exam_title || `Đề #${sub.exam}`}</td>

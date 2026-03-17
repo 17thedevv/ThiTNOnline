@@ -16,6 +16,25 @@ const TopBar = () => {
   const { user, logout } = useAuth();
 
   const displayName = user?.username || user?.name || "Người dùng";
+  
+  console.log('TopBar user data:', user); // Debug log
+
+  // Get user avatar URL
+  const getUserAvatar = () => {
+    console.log('TopBar user data:', user); // Debug log
+    
+    if (user?.avatar && user.avatar !== null && user.avatar !== '') {
+      console.log('User avatar:', user.avatar); // Debug log
+      // If avatar is a full URL, return as is
+      if (user.avatar.startsWith('http')) {
+        return user.avatar;
+      }
+      // If avatar is a relative path, prepend base URL
+      return `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${user.avatar}`;
+    }
+    console.log('Avatar is null or empty, using default'); // Debug log
+    return defaultAvatar;
+  };
 
   useEffect(() => {
     fetchNotificationCount();
@@ -75,7 +94,7 @@ const TopBar = () => {
         className="profile"
         onClick={() => setOpen((prev) => !prev)}
       >
-        <img src={defaultAvatar} alt="avatar" />
+        <img src={getUserAvatar()} alt="avatar" />
         <span>{displayName}</span>
 
         {open && (

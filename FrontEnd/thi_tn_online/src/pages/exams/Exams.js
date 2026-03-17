@@ -62,7 +62,7 @@ const Exams = () => {
               fontSize: 14,
             }}
             onClick={() =>
-              navigate(`/subjects/0/create-exam`, { state: { classId: null } })
+              navigate(`/exams/create`, { state: { classId: null } })
             }
           >
             + Tạo đề thi

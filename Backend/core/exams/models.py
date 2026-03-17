@@ -5,11 +5,6 @@ from django.conf import settings
 class Exam(models.Model):
     title = models.CharField(max_length=255)
     duration = models.IntegerField()
-    subject = models.ForeignKey(
-        "subjects.Subject",
-        on_delete=models.CASCADE,
-        related_name="exams",
-    )
     exam_class = models.ForeignKey(
         "classes.Class",
         on_delete=models.CASCADE,

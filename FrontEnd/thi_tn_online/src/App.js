@@ -1,11 +1,11 @@
 import AppRoutes from "./routes/AppRoutes";
-import ChatWidget from "./components/ChatWidget";
+import Chatbot from "./components/Chatbot";
 
 function App() {
   return (
     <>
       <AppRoutes />
-      <ChatWidget />
+      <Chatbot />
     </>
   );
 }

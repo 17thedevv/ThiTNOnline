@@ -12,6 +12,11 @@ export async function createExam(payload) {
   return res.data;
 }
 
+export async function updateExam(examId, payload) {
+  const res = await apiClient.put(`/api/exams/${examId}/edit/`, payload);
+  return res.data;
+}
+
 export async function createQuestion({ examId, question }) {
   const res = await apiClient.post(`/api/exams/${examId}/questions/`, question);
   return res.data;

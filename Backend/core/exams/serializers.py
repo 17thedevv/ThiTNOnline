@@ -10,7 +10,6 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 class ExamSerializer(serializers.ModelSerializer):
     question_count = serializers.SerializerMethodField()
-    subject_name = serializers.CharField(source='subject.name', read_only=True)
     class_name = serializers.CharField(source='exam_class.name', read_only=True)
     created_by_name = serializers.CharField(source='created_by.username', read_only=True)
     
@@ -21,3 +20,14 @@ class ExamSerializer(serializers.ModelSerializer):
     
     def get_question_count(self, obj):
         return obj.questions.count()
+
+
+class ExamDetailSerializer(serializers.ModelSerializer):
+    questions = QuestionSerializer(many=True, read_only=True)
+    class_name = serializers.CharField(source='exam_class.name', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.username', read_only=True)
+    
+    class Meta:
+        model = Exam
+        fields = '__all__'
+        read_only_fields = ('created_by', 'created_at')

@@ -16,7 +16,6 @@ class SubmissionWithUserExamSerializer(serializers.ModelSerializer):
     student_full_name = serializers.SerializerMethodField()
     exam_title = serializers.CharField(source="exam.title", read_only=True)
     exam_duration = serializers.IntegerField(source="exam.duration", read_only=True)
-    exam_subject = serializers.SerializerMethodField()
     exam_class = serializers.SerializerMethodField()
     is_passed = serializers.SerializerMethodField()
     
@@ -27,7 +26,6 @@ class SubmissionWithUserExamSerializer(serializers.ModelSerializer):
             "exam",
             "exam_title",
             "exam_duration",
-            "exam_subject",
             "exam_class",
             "student",
             "student_username",
@@ -44,10 +42,6 @@ class SubmissionWithUserExamSerializer(serializers.ModelSerializer):
     def get_exam_class(self, obj):
         exam_class = obj.exam.exam_class
         return exam_class.name if exam_class else "Chưa gán lớp"
-    
-    def get_exam_subject(self, obj):
-        subject = obj.exam.subject
-        return subject.name if subject else "Chưa gán môn học"
     
     def get_is_passed(self, obj):
         return obj.score >= 5  # Default passing score

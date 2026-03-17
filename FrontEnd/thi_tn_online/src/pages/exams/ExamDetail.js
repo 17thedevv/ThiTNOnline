@@ -18,7 +18,8 @@ import {
   FaTrophy,
   FaRedo,
   FaBook,
-  FaUserGraduate
+  FaUserGraduate,
+  FaPercent
 } from "react-icons/fa";
 
 const ExamDetail = () => {
@@ -79,6 +80,14 @@ const ExamDetail = () => {
   }, [examId, isTeacherLike]);
 
   // Helper functions
+  const getUserFullName = () => {
+    if (!user) return 'Không xác định';
+    const firstName = user.first_name || '';
+    const lastName = user.last_name || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    return fullName || user.username;
+  };
+
   const formatTime = (seconds) => {
     if (!seconds) return "00:00:00";
     const h = Math.floor(seconds / 3600);
@@ -116,20 +125,14 @@ const ExamDetail = () => {
     setFlagged((prev) => ({ ...prev, [questionId]: !prev[questionId] }));
   };
 
-  const handleNext = () => {
-    if (current < questions.length - 1) setCurrent(current + 1);
-  };
-
-  const handlePrev = () => {
-    if (current > 0) setCurrent(current - 1);
-  };
-
-  const handleJump = (index) => {
-    setCurrent(index);
-  };
-
   const handleSubmit = async () => {
     if (submitting) return;
+    
+    // Debug: Log what we're sending
+    console.log('DEBUG: Submitting answers:', answers);
+    console.log('DEBUG: Answers type:', typeof answers);
+    console.log('DEBUG: Answers keys:', Object.keys(answers));
+    console.log('DEBUG: Answers values:', Object.values(answers));
     
     console.log('Submitting exam:', {
       examId: parseInt(examId),
@@ -145,7 +148,18 @@ const ExamDetail = () => {
         answers: answers,
       });
       console.log('Submit result:', result);
-      setSubmitResult(result);
+      
+      // Calculate correct answers from result
+      const correctCount = result.correct_count || 0;
+      const totalQuestions = result.total_questions || questions.length;
+      const percentage = result.percentage || 0;
+      
+      setSubmitResult({
+        ...result,
+        correctCount,
+        totalQuestions,
+        percentage
+      });
     } catch (e) {
       console.error('Submit error:', e);
       setError("Nộp bài thất bại. Vui lòng thử lại.");
@@ -153,6 +167,36 @@ const ExamDetail = () => {
       setSubmitting(false);
     }
   };
+
+  // Timer effect
+  useEffect(() => {
+    if (timeLeft === null || timeLeft <= 0) return;
+    const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [timeLeft]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (isTeacherLike) return;
+      
+      switch (e.key) {
+        case "ArrowLeft":
+          if (current > 0) setCurrent(current - 1);
+          break;
+        case "ArrowRight":
+          if (current < questions.length - 1) setCurrent(current + 1);
+          break;
+        case " ":
+          e.preventDefault();
+          handleFlag(questions[current].id);
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [current, questions, isTeacherLike]);
 
   // Timer effects (after function definitions)
   useEffect(() => {
@@ -176,6 +220,173 @@ const ExamDetail = () => {
       handleSubmit();
     }
   }, [timeLeft, submitting, isTeacherLike, handleSubmit]);
+
+  // If teacher, show exam preview instead of taking interface
+  if (isTeacherLike) {
+    return (
+      <div style={{
+        padding: '40px',
+        maxWidth: '1200px',
+        margin: '0 auto',
+        background: '#f8fafc',
+        minHeight: '100vh'
+      }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          padding: '30px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
+        }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div>Đang tải...</div>
+            </div>
+          ) : error ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#dc2626' }}>
+              <div>{error}</div>
+            </div>
+          ) : exam && questions.length > 0 ? (
+            <div>
+              <div style={{ marginBottom: '30px' }}>
+                <h1 style={{ fontSize: '28px', marginBottom: '16px', color: '#1f2937' }}>
+                  {exam.title}
+                </h1>
+                <div style={{ display: 'flex', gap: '24px', color: '#6b7280', fontSize: '16px' }}>
+                  <span>Thời gian: {exam.duration} phút</span>
+                  <span>Số câu: {questions.length}</span>
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '20px' }}>
+                <div style={{ flex: '1' }}>
+                  {questions.map((question, index) => (
+                    <div key={question.id} style={{
+                      background: '#f9fafb',
+                      padding: '24px',
+                      borderRadius: '12px',
+                      marginBottom: '20px',
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      <div style={{ marginBottom: '16px' }}>
+                        <span style={{
+                          background: '#3b82f6',
+                          color: 'white',
+                          padding: '4px 12px',
+                          borderRadius: '20px',
+                          fontSize: '14px',
+                          fontWeight: 'bold'
+                        }}>
+                          Câu {index + 1}
+                        </span>
+                      </div>
+                      
+                      <div style={{ fontSize: '18px', lineHeight: '1.6', marginBottom: '20px', color: '#1f2937' }}>
+                        {question.text}
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {question.options && question.options.map((option, optIndex) => {
+                          if (!option) return null;
+                          const letter = ['A', 'B', 'C', 'D'][optIndex];
+                          const isCorrect = letter === question.correctAnswer;
+                          
+                          return (
+                            <div key={optIndex} style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '16px',
+                              padding: '16px',
+                              background: isCorrect ? '#dcfce7' : '#f3f4f6',
+                              border: isCorrect ? '2px solid #16a34a' : '2px solid #e5e7eb',
+                              borderRadius: '8px'
+                            }}>
+                              <div style={{
+                                width: '32px',
+                                height: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: isCorrect ? '#16a34a' : '#6b7280',
+                                color: 'white',
+                                borderRadius: '50%',
+                                fontWeight: 'bold'
+                              }}>
+                                {letter}
+                              </div>
+                              <div style={{ flex: 1, lineHeight: '1.5' }}>{option}</div>
+                              {isCorrect && (
+                                <FaCheckCircle style={{ color: '#16a34a', fontSize: '20px' }} />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div style={{ width: '300px', position: 'sticky', top: '20px' }}>
+                  <div style={{
+                    background: '#f3f4f6',
+                    padding: '20px',
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <h3 style={{ fontSize: '18px', marginBottom: '16px', color: '#1f2937' }}>
+                      Tóm tắt đề thi
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Tổng số câu:</span>
+                        <strong>{questions.length}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Thời gian:</span>
+                        <strong>{exam.duration} phút</strong>
+                      </div>
+                    </div>
+                    
+                    <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e5e7eb' }}>
+                      <h4 style={{ fontSize: '16px', marginBottom: '12px', color: '#1f2937' }}>
+                        Đáp án đúng
+                      </h4>
+                      {questions.map((q, index) => (
+                        <div key={q.id} style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          padding: '8px 0',
+                          borderBottom: '1px solid #e5e7eb'
+                        }}>
+                          <span>Câu {index + 1}:</span>
+                          <strong style={{ color: '#16a34a' }}>{q.correctAnswer}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div>Không tìm thấy đề thi</div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const handleNext = () => {
+    if (current < questions.length - 1) setCurrent(current + 1);
+  };
+
+  const handlePrev = () => {
+    if (current > 0) setCurrent(current - 1);
+  };
+
+  const handleJump = (index) => {
+    setCurrent(index);
+  };
 
   if (loading) {
     return (
@@ -288,8 +499,20 @@ const ExamDetail = () => {
               textAlign: 'center'
             }}>
               <FaCheckCircle style={{ fontSize: '24px', marginBottom: '8px' }} />
-              <h3 style={{ margin: '0', fontSize: '24px', fontWeight: '700' }}>{submitResult.correct || 0}</h3>
+              <h3 style={{ margin: '0', fontSize: '24px', fontWeight: '700' }}>{submitResult.correctCount || 0}</h3>
               <p style={{ margin: '4px 0 0 0', fontSize: '14px', opacity: 0.8 }}>Câu đúng</p>
+            </div>
+            
+            <div style={{
+              background: '#fef3c7',
+              color: '#d97706',
+              padding: '20px',
+              borderRadius: '12px',
+              textAlign: 'center'
+            }}>
+              <FaPercent style={{ fontSize: '24px', marginBottom: '8px' }} />
+              <h3 style={{ margin: '0', fontSize: '24px', fontWeight: '700' }}>{submitResult.percentage || 0}%</h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '14px', opacity: 0.8 }}>Tỷ lệ đúng</p>
             </div>
           </div>
           
@@ -392,8 +615,7 @@ const ExamDetail = () => {
           <div>
             <h1 style={{ margin: '0', fontSize: '24px', fontWeight: 'bold' }}>{exam?.title}</h1>
             <div style={{ display: 'flex', gap: '20px', marginTop: '4px', fontSize: '14px', color: '#718096' }}>
-              <span><FaBook /> {exam?.subject?.name || 'Không xác định'}</span>
-              <span><FaUserGraduate /> {user?.username}</span>
+              <span><FaUserGraduate /> {getUserFullName()}</span>
             </div>
           </div>
         </div>

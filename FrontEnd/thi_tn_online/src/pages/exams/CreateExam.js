@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import "./CreateExam.css";
-import { listSubjects, createSubject } from "../../api/subjects";
 import { createExam, createQuestion } from "../../api/exams";
 
 const emptyQuestion = () => ({
@@ -11,7 +10,6 @@ const emptyQuestion = () => ({
 });
 
 const CreateExam = () => {
-  const { subjectId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -21,36 +19,13 @@ const CreateExam = () => {
   const [examTitle, setExamTitle] = useState("");
   const [duration, setDuration] = useState(15);
   const [maxAttempts, setMaxAttempts] = useState("");
-  const [subject, setSubject] = useState(subjectId || "");
-  const [subjects, setSubjects] = useState([]);
-  const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const [questions, setQuestions] = useState([emptyQuestion()]);
   const [activeIndex, setActiveIndex] = useState(0);
-
-  useEffect(() => {
-    const loadSubjects = async () => {
-      try {
-        let data = await listSubjects();
-        let list = data || [];
-        if (!list.length) {
-          const created = await createSubject({ name: "Chung" });
-          list = [created];
-        }
-        setSubjects(list);
-        setSubject(String(list[0].id));
-      } catch {
-        setError("Không tải được môn mặc định cho đề thi.");
-      } finally {
-        setLoadingSubjects(false);
-      }
-    };
-
-    loadSubjects();
-  }, []);
 
   const handleQuestionChange = (index, value) => {
     const updated = [...questions];
@@ -85,15 +60,24 @@ const CreateExam = () => {
     }
   };
 
+  const duplicateQuestion = (index) => {
+    const questionToDuplicate = questions[index];
+    const newQuestion = {
+      ...questionToDuplicate,
+      content: questionToDuplicate.content + " (Bản sao)",
+      correctIndex: null,
+    };
+    const updated = [...questions];
+    updated.splice(index + 1, 0, newQuestion);
+    setQuestions(updated);
+    setActiveIndex(index + 1);
+  };
+
   const handleSubmit = async () => {
     const newFieldErrors = {};
 
     if (!examTitle.trim()) {
       newFieldErrors.title = "Vui lòng nhập tên đề thi.";
-    }
-    if (!subject) {
-      newFieldErrors.subject =
-        "Không tìm thấy môn học mặc định cho đề thi.";
     }
 
     if (maxAttempts !== "") {
@@ -108,6 +92,7 @@ const CreateExam = () => {
       if (!q.content.trim()) {
         err.content = "Nội dung câu hỏi không được để trống.";
       }
+
       const filledOptions = q.options.filter((o) => o.trim() !== "");
       if (filledOptions.length < 2) {
         err.options = "Cần ít nhất 2 đáp án có nội dung.";
@@ -125,7 +110,6 @@ const CreateExam = () => {
     if (Object.keys(newFieldErrors).length > 0 || hasQuestionError) {
       setFieldErrors({
         title: newFieldErrors.title,
-        subject: newFieldErrors.subject,
         maxAttempts: newFieldErrors.maxAttempts,
         questions: questionErrors,
       });
@@ -134,34 +118,32 @@ const CreateExam = () => {
     }
 
     setFieldErrors({});
-
-    // Convert questions to backend format
-    const payloadQuestions = questions.map((q) => ({
-      question_text: q.content,
-      option_a: q.options[0] || "",
-      option_b: q.options[1] || "",
-      option_c: q.options[2] || "",
-      option_d: q.options[3] || "",
-      correct_answer:
-        q.correctIndex != null
-          ? String.fromCharCode(65 + q.correctIndex)
-          : "A",
-    }));
-
-    const payload = {
-      title: examTitle.trim(),
-      duration: Number(duration) || 0,
-      subject: Number(subject),
-      exam_class: initialClassId ? Number(initialClassId) : null,
-      max_attempts:
-        maxAttempts === "" ? null : Number(maxAttempts) || null,
-    };
-
     setSaving(true);
     setError("");
 
     try {
+      const payload = {
+        title: examTitle.trim(),
+        duration: Number(duration) || 0,
+        exam_class: initialClassId ? Number(initialClassId) : null,
+        max_attempts:
+          maxAttempts === "" ? null : Number(maxAttempts) || null,
+      };
+
       const exam = await createExam(payload);
+
+      // Convert questions to backend format
+      const payloadQuestions = questions.map((q) => ({
+        question_text: q.content,
+        option_a: q.options[0] || "",
+        option_b: q.options[1] || "",
+        option_c: q.options[2] || "",
+        option_d: q.options[3] || "",
+        correct_answer:
+          q.correctIndex != null
+            ? String.fromCharCode(65 + q.correctIndex)
+            : "A",
+      }));
 
       // create questions
       if (payloadQuestions.length > 0) {
@@ -177,10 +159,14 @@ const CreateExam = () => {
         }
       }
 
-      alert("Đã tạo đề thi thành công.");
-      if (initialClassId) {
-        navigate(`/classes/${initialClassId}`);
-      }
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        if (initialClassId) {
+          navigate(`/classes/${initialClassId}`);
+        }
+      }, 2000);
+
     } catch (e) {
       const msg =
         e?.response?.data?.detail ||
@@ -199,8 +185,30 @@ const CreateExam = () => {
   const hasCurrentError =
     currentErrors.content || currentErrors.options || currentErrors.correct;
 
+  const completedQuestions = questions.filter(q => 
+    q.content.trim() && 
+    q.options.filter(o => o.trim()).length >= 2 && 
+    q.correctIndex !== null
+  ).length;
+
   return (
     <div className="create-exam-container">
+      {saving && (
+        <div className="saving-overlay">
+          <div className="saving-spinner"></div>
+        </div>
+      )}
+
+      {showSuccess && (
+        <div className="success-message">
+          <div className="success-icon">✓</div>
+          <div>
+            <strong>Đã tạo đề thi thành công!</strong>
+            <p>Đang chuyển hướng...</p>
+          </div>
+        </div>
+      )}
+
       <div className="create-exam-header">
         <div className="header-main">
           <input
@@ -211,33 +219,38 @@ const CreateExam = () => {
             className={fieldErrors.title ? "input-error large" : "large"}
           />
           {fieldErrors.title && (
-            <div className="field-error-text">{fieldErrors.title}</div>
+            <div className="field-error-text">
+              <span>⚠️</span> {fieldErrors.title}
+            </div>
           )}
         </div>
 
         <div className="header-meta">
           <div className="meta-field">
-            <span>Thời gian (phút)</span>
+            <label>Thời gian (phút)</label>
             <input
               type="number"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
+              min="1"
+              max="300"
             />
           </div>
 
           <div className="meta-field">
-            <span>Số lần làm tối đa</span>
+            <label>Số lần làm tối đa</label>
             <input
               type="number"
               placeholder="Để trống = không giới hạn"
               value={maxAttempts}
               onChange={(e) => setMaxAttempts(e.target.value)}
               className={fieldErrors.maxAttempts ? "input-error" : ""}
-              style={{ width: 140 }}
+              min="1"
+              max="100"
             />
             {fieldErrors.maxAttempts && (
               <div className="field-error-text small">
-                {fieldErrors.maxAttempts}
+                <span>⚠️</span> {fieldErrors.maxAttempts}
               </div>
             )}
           </div>
@@ -247,19 +260,36 @@ const CreateExam = () => {
             onClick={handleSubmit}
             disabled={saving}
           >
-            {saving ? "Đang lưu..." : "Lưu đề thi"}
+            {saving ? (
+              <>
+                <div className="btn-spinner"></div>
+                Đang lưu...
+              </>
+            ) : (
+              <>
+                <span>💾</span>
+                Lưu đề thi
+              </>
+            )}
           </button>
         </div>
       </div>
 
-      {error && <div className="create-exam-error">{error}</div>}
+      {error && (
+        <div className="create-exam-error">
+          <span>⚠️</span> {error}
+        </div>
+      )}
 
       <div className="create-exam-layout">
         <div className="question-sidebar">
           <div className="sidebar-header">
-            <span>Câu hỏi</span>
-            <button onClick={addQuestion}>+ Thêm câu</button>
+            <span>📝 Câu hỏi ({completedQuestions}/{questions.length})</span>
+            <button onClick={addQuestion}>
+              <span>➕</span> Thêm câu
+            </button>
           </div>
+          
           <div className="sidebar-list">
             {questions.map((q, idx) => {
               const qErr =
@@ -268,19 +298,62 @@ const CreateExam = () => {
                   : {};
               const invalid =
                 qErr.content || qErr.options || qErr.correct;
+              const isCompleted = q.content.trim() && 
+                q.options.filter(o => o.trim()).length >= 2 && 
+                q.correctIndex !== null;
+              
               return (
                 <div
                   key={idx}
                   className={`sidebar-item ${
                     idx === activeIndex ? "active" : ""
-                  } ${invalid ? "invalid" : ""}`}
+                  } ${invalid ? "invalid" : ""} ${!isCompleted && idx !== activeIndex ? "incomplete" : ""}`}
                   onClick={() => setActiveIndex(idx)}
                 >
-                  <span>Câu {idx + 1}</span>
+                  <span>
+                    {isCompleted ? "✅" : invalid ? "❌" : "⭕"} Câu {idx + 1}
+                  </span>
+                  <div className="question-actions">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicateQuestion(idx);
+                      }}
+                      title="Sao chép câu hỏi"
+                      className="action-btn"
+                    >
+                      📋
+                    </button>
+                    {questions.length > 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeQuestion(idx);
+                        }}
+                        title="Xóa câu hỏi"
+                        className="action-btn delete"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
                   {invalid && <span className="dot" />}
                 </div>
               );
             })}
+          </div>
+          
+          <div className="sidebar-stats">
+            <div className="stat-item">
+              <span className="stat-label">Hoàn thành:</span>
+              <span className="stat-value">{completedQuestions}/{questions.length}</span>
+            </div>
+            <div className="progress-bar">
+              <div 
+                className="progress-fill" 
+                style={{ width: `${(completedQuestions / questions.length) * 100}%` }}
+              />
+            </div>
           </div>
         </div>
 
@@ -291,19 +364,30 @@ const CreateExam = () => {
         >
           <div className="question-header">
             <h4>
+              <span>📝</span>
               Câu {activeIndex + 1}{" "}
               {hasCurrentError && (
-                <span className="question-warning">(Thiếu thông tin)</span>
+                <span className="question-warning">(⚠️ Cần hoàn thiện)</span>
               )}
             </h4>
-            {questions.length > 1 && (
+            <div className="question-actions-header">
               <button
-                className="delete-btn"
-                onClick={() => removeQuestion(activeIndex)}
+                className="action-btn"
+                onClick={() => duplicateQuestion(activeIndex)}
+                title="Sao chép câu hỏi"
               >
-                Xoá câu hỏi
+                📋 Sao chép
               </button>
-            )}
+              {questions.length > 1 && (
+                <button
+                  className="delete-btn"
+                  onClick={() => removeQuestion(activeIndex)}
+                  title="Xóa câu hỏi"
+                >
+                  <span>🗑️</span> Xóa câu hỏi
+                </button>
+              )}
+            </div>
           </div>
 
           <textarea
@@ -315,7 +399,9 @@ const CreateExam = () => {
             className={currentErrors.content ? "input-error" : ""}
           />
           {currentErrors.content && (
-            <div className="field-error-text">{currentErrors.content}</div>
+            <div className="field-error-text">
+              <span>⚠️</span> {currentErrors.content}
+            </div>
           )}
 
           <div className="options">
@@ -343,15 +429,22 @@ const CreateExam = () => {
                     )
                   }
                 />
+                <span className="option-label">
+                  {String.fromCharCode(65 + optIndex)}
+                </span>
               </div>
             ))}
           </div>
 
           {currentErrors.options && (
-            <div className="field-error-text">{currentErrors.options}</div>
+            <div className="field-error-text">
+              <span>⚠️</span> {currentErrors.options}
+            </div>
           )}
           {currentErrors.correct && (
-            <div className="field-error-text">{currentErrors.correct}</div>
+            <div className="field-error-text">
+              <span>⚠️</span> {currentErrors.correct}
+            </div>
           )}
 
           <div className="question-footer">
@@ -362,8 +455,13 @@ const CreateExam = () => {
               }
               disabled={activeIndex === 0}
             >
-              ← Câu trước
+              <span>⬅️</span> Câu trước
             </button>
+            
+            <div className="question-counter">
+              {activeIndex + 1} / {questions.length}
+            </div>
+            
             <button
               className="nav-btn"
               onClick={() =>
@@ -373,7 +471,7 @@ const CreateExam = () => {
               }
               disabled={activeIndex === questions.length - 1}
             >
-              Câu tiếp →
+              Câu tiếp <span>➡️</span>
             </button>
           </div>
         </div>

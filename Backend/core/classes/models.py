@@ -13,6 +13,7 @@ def generate_class_code(length=6):
 class Class(models.Model):
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=16, unique=True, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     teacher = models.ForeignKey(
         settings.AUTH_USER_MODEL,

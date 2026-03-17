@@ -28,32 +28,70 @@ import {
 } from "react-icons/fa";
 import "./Dashboard.css";
 
-// Simple action handlers for demo purposes
-const handleEditExam = (examId, examTitle) => {
+// Action handlers for navigation
+const handleEditExam = (examId, examTitle, navigate) => {
   console.log(`Chỉnh sửa bài thi ID: ${examId}`);
-  alert(`Đã nhấn nút "Chỉnh sửa" cho bài thi: ${examTitle}\n\nTính năng này sẽ điều hướng đến trang chỉnh sửa bài thi.`);
+  // Navigate to edit exam page
+  navigate(`/exams/${examId}/edit`);
 };
 
-const handleViewExam = (examId, examTitle) => {
+const handleViewExam = (examId, examTitle, navigate) => {
   console.log(`Xem chi tiết bài thi ID: ${examId}`);
-  alert(`Đã nhấn nút "Xem chi tiết" cho bài thi: ${examTitle}\n\nTính năng này sẽ điều hướng đến trang chi tiết bài thi.`);
+  // Navigate to exam details page
+  navigate(`/exams/${examId}`);
 };
 
-const handleStartExam = (examId, examTitle, duration, questionCount) => {
+const handleStartExam = (examId, examTitle, duration, questionCount, navigate) => {
   console.log(`Bắt đầu làm bài thi ID: ${examId}`);
-  if (window.confirm(`Bắt đầu làm bài thi: ${examTitle}?\n\nThời gian: ${duration} phút\nSố câu: ${questionCount || 0} câu`)) {
-    alert(`Đã bắt đầu làm bài thi: ${examTitle}\n\nTính năng này sẽ điều hướng đến trang làm bài.`);
-  }
+  // Navigate to take exam page
+  navigate(`/exams/${examId}/take`);
 };
 
-const handleViewSubmissions = (examId, examTitle) => {
+const handleViewSubmissions = (examId, examTitle, navigate) => {
   console.log(`Xem bài nộp của bài thi ID: ${examId}`);
-  alert(`Đã nhấn nút "Xem bài nộp" cho bài thi: ${examTitle}\n\nTính năng này sẽ điều hướng đến trang xem bài nộp.`);
+  // Navigate to submissions page
+  navigate(`/exams/${examId}/submissions`);
 };
 
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // Helper function to get full name
+  const getUserFullName = () => {
+    if (!user) return 'Không xác định';
+    const firstName = user.first_name || '';
+    const lastName = user.last_name || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    return fullName || user.username || 'Không xác định';
+  };
+
+  // Action handlers for navigation
+  const handleEditExam = (examId, examTitle) => {
+    console.log(`Chỉnh sửa bài thi ID: ${examId}`);
+    // Navigate to exam detail page
+    navigate(`/exam/${examId}`);
+  };
+
+  const handleViewExam = (examId, examTitle) => {
+    console.log(`Xem chi tiết bài thi ID: ${examId}`);
+    // Navigate to exam details page
+    navigate(`/exam/${examId}`);
+  };
+
+  const handleStartExam = (examId, examTitle, duration, questionCount) => {
+    console.log(`Bắt đầu làm bài thi ID: ${examId}`);
+    // Navigate to exam detail page
+    navigate(`/exam/${examId}`);
+  };
+
+  const handleViewSubmissions = (examId, examTitle) => {
+    console.log(`Xem bài nộp của bài thi ID: ${examId}`);
+    // Navigate to exam detail page
+    navigate(`/exam/${examId}`);
+  };
+
+  const role = user?.role;
   const [classes, setClasses] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [exams, setExams] = useState([]);
@@ -202,7 +240,7 @@ const Dashboard = () => {
       <div className="dashboard-header">
         <div className="welcome-section">
           <h1 className="dashboard-title">
-            Chào mừng trở lại, {user?.name || user?.username}! 👋
+            Chào mừng trở lại, {getUserFullName()}!
           </h1>
           <p className="dashboard-subtitle">
             {isTeacher 
@@ -216,7 +254,7 @@ const Dashboard = () => {
             {isTeacher ? <FaChalkboardTeacher /> : <FaUserGraduate />}
           </div>
           <div className="user-details">
-            <span className="user-name">{user?.name || user?.username}</span>
+            <span className="user-name">{getUserFullName()}</span>
             <span className="user-role">
               {isTeacher ? "Giáo viên" : "Học sinh"}
             </span>
@@ -289,7 +327,6 @@ const Dashboard = () => {
                   <FaCalendarAlt />
                   Bài thi gần đây
                 </h2>
-                <button className="view-all-btn">Xem tất cả</button>
               </div>
               
               <div className="exam-list">
@@ -298,7 +335,6 @@ const Dashboard = () => {
                     <div key={exam.id} className="exam-card">
                       <div className="exam-info">
                         <h4 className="exam-title">{exam.title}</h4>
-                        <p className="exam-subject">{exam.subject_name || exam.subject?.name}</p>
                         <div className="exam-meta">
                           <span className="exam-duration">
                             <FaClock /> {exam.duration} phút
@@ -310,26 +346,6 @@ const Dashboard = () => {
                             <FaChalkboardTeacher /> {exam.class_name || exam.exam_class?.name || 'Chưa phân lớp'}
                           </span>
                         </div>
-                      </div>
-                      <div className="exam-actions">
-                        <button 
-                          className="btn-primary action-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditExam(exam.id, exam.title);
-                          }}
-                        >
-                          <FaEdit /> Chỉnh sửa
-                        </button>
-                        <button 
-                          className="btn-secondary action-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewSubmissions(exam.id, exam.title);
-                          }}
-                        >
-                          <FaEye /> Xem bài nộp
-                        </button>
                       </div>
                     </div>
                   ))
@@ -348,7 +364,6 @@ const Dashboard = () => {
                   <FaClipboardList />
                   Bài thi gần đây được nộp
                 </h2>
-                <button className="view-all-btn">Xem tất cả</button>
               </div>
               
               <div className="submission-list">
@@ -458,7 +473,6 @@ const Dashboard = () => {
                   <FaCalendarAlt />
                   Bài thi cần làm
                 </h2>
-                <button className="view-all-btn">Xem tất cả</button>
               </div>
               
               <div className="exam-list">
@@ -467,7 +481,6 @@ const Dashboard = () => {
                     <div key={exam.id} className="exam-card">
                       <div className="exam-info">
                         <h4 className="exam-title">{exam.title}</h4>
-                        <p className="exam-subject">{exam.subject_name || exam.subject?.name}</p>
                         <div className="exam-meta">
                           <span className="exam-duration">
                             <FaClock /> {exam.duration} phút
@@ -485,7 +498,7 @@ const Dashboard = () => {
                           className="btn-primary action-btn student-action"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleStartExam(exam.id, exam.title, exam.duration, exam.question_count);
+                            handleStartExam(exam.id, exam.title, exam.duration, exam.question_count, navigate);
                           }}
                         >
                           <FaPlay /> Bắt đầu làm bài
@@ -494,7 +507,7 @@ const Dashboard = () => {
                           className="btn-secondary action-btn"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleViewExam(exam.id, exam.title);
+                            handleViewExam(exam.id, exam.title, navigate);
                           }}
                         >
                           <FaEye /> Xem chi tiết
@@ -517,7 +530,6 @@ const Dashboard = () => {
                   <FaTrophy />
                   Kết quả thi gần đây
                 </h2>
-                <button className="view-all-btn">Xem tất cả</button>
               </div>
               
               <div className="submission-list">

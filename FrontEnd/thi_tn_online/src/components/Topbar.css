@@ -1,14 +1,26 @@
 .topbar {
-  height: 60px;
-  background: #ffffff;
+  height: 70px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding: 0 24px;
-  gap: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 0 32px;
+  gap: 24px;
+  border-bottom: 1px solid #e2e8f0;
   position: relative;
   z-index: 100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.topbar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, #3b82f6 50%, transparent 100%);
+  opacity: 0.3;
 }
 
 /* Notification */
@@ -19,66 +31,265 @@
 }
 
 .notify-btn {
-  background: none;
-  border: none;
-  font-size: 18px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border: 1px solid #e2e8f0;
+  font-size: 20px;
   cursor: pointer;
   position: relative;
+  padding: 10px;
+  border-radius: 12px;
+  color: #374151;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.notify-btn:hover {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-color: #3b82f6;
+  color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+}
+
+.notify-btn:active {
+  transform: translateY(0);
 }
 
 .notify-count {
   position: absolute;
-  top: -6px;
-  right: -8px;
-  background: #ef4444;
+  top: -4px;
+  right: -4px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: #fff;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  animation: pulse 2s infinite;
+  min-width: 20px;
+  text-align: center;
+  border: 2px solid #ffffff;
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1); 
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.1); 
+    opacity: 0.8;
+  }
 }
 
 .notify-dropdown {
   position: absolute;
   right: 0;
-  top: 40px;
-  width: 300px;
-  background: white;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-  border-radius: 10px;
+  top: 60px;
+  width: 360px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  border-radius: 16px;
   z-index: 999;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Profile */
 .profile {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   cursor: pointer;
   position: relative;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.profile:hover {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
 }
 
 .profile img {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
+  border: 3px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.profile:hover img {
+  transform: scale(1.05);
+  border-color: #3b82f6;
+}
+
+.profile span {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.profile:hover span {
+  color: #3b82f6;
 }
 
 .dropdown {
   position: absolute;
   right: 0;
-  top: 45px;
-  background: #ffffff;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-  border-radius: 8px;
+  top: 60px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
   overflow: hidden;
+  border: 1px solid #e2e8f0;
+  min-width: 180px;
+  animation: slideDown 0.3s ease-out;
 }
 
 .dropdown div {
-  padding: 10px 16px;
+  padding: 14px 20px;
   cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.dropdown div:last-child {
+  border-bottom: none;
 }
 
 .dropdown div:hover {
-  background: #f3f4f6;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #3b82f6;
+  transform: translateX(4px);
+}
+
+.dropdown div:first-child:hover::before {
+  content: '👤';
+  position: absolute;
+  left: 20px;
+}
+
+.dropdown div:last-child:hover::before {
+  content: '🚪';
+  position: absolute;
+  left: 20px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .topbar {
+    height: 60px;
+    padding: 0 16px;
+    gap: 16px;
+  }
+  
+  .notify-btn {
+    font-size: 18px;
+    padding: 8px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+  
+  .notify-count {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+  
+  .notify-dropdown {
+    width: 300px;
+    top: 50px;
+  }
+  
+  .profile {
+    padding: 6px 12px;
+    gap: 8px;
+  }
+  
+  .profile img {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .profile span {
+    font-size: 14px;
+  }
+  
+  .dropdown {
+    top: 50px;
+    min-width: 160px;
+  }
+  
+  .dropdown div {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .topbar {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    border-bottom-color: #374151;
+  }
+  
+  .notify-btn {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+  
+  .notify-btn:hover {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    border-color: #3b82f6;
+  }
+  
+  .profile {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    border-color: #4b5563;
+  }
+  
+  .profile span {
+    color: #d1d5db;
+  }
+  
+  .dropdown {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    border-color: #374151;
+  }
+  
+  .dropdown div {
+    color: #d1d5db;
+    border-bottom-color: #374151;
+  }
 }
