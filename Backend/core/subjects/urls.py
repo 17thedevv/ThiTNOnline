@@ -1,6 +1,7 @@
 from django.urls import path
-from .views import SubjectListCreateView
+from .views import SubjectListCreateView, SubjectDetailView
 
 urlpatterns = [
-    path('', SubjectListCreateView.as_view()),
+    path('', SubjectListCreateView.as_view(), name='subject-list-create'),
+    path('<int:pk>/', SubjectDetailView.as_view(), name='subject-detail'),
 ]
