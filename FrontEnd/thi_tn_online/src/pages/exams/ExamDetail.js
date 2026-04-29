@@ -38,6 +38,9 @@ const ExamDetail = () => {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
+  const [showReview, setShowReview] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
+  const [deadlineFormatted, setDeadlineFormatted] = useState("");
 
   // UI states
   const [showQuestionPanel, setShowQuestionPanel] = useState(true);
@@ -62,12 +65,33 @@ const ExamDetail = () => {
           text: q.question_text,
           options: [q.option_a, q.option_b, q.option_c, q.option_d],
           correctAnswer: q.correct_answer,
+          image: q.image ? `http://localhost:8000${q.image}` : null,
         }));
         setQuestions(normalized);
         setCurrent(0);
         if (!isTeacherLike) {
           const secs = (examData.duration || 0) * 60;
           setTimeLeft(secs > 0 ? secs : null);
+
+          // Check deadline
+          if (examData.due_date) {
+            const deadline = new Date(examData.due_date);
+            const now = new Date();
+            if (now > deadline) {
+              setIsExpired(true);
+            }
+          }
+        }
+        
+        if (examData.due_date) {
+          const deadline = new Date(examData.due_date);
+          setDeadlineFormatted(deadline.toLocaleString('vi-VN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          }));
         }
       } catch (e) {
         setError("Không tải được đề thi. Vui lòng thử lại.");
@@ -223,155 +247,127 @@ const ExamDetail = () => {
 
   // If teacher, show exam preview instead of taking interface
   if (isTeacherLike) {
+    const tCurrent = current;
+    const tQuestion = questions[tCurrent];
     return (
-      <div style={{
-        padding: '40px',
-        maxWidth: '1200px',
-        margin: '0 auto',
-        background: '#f8fafc',
-        minHeight: '100vh'
-      }}>
-        <div style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '30px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
-        }}>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div>Đang tải...</div>
-            </div>
-          ) : error ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#dc2626' }}>
-              <div>{error}</div>
-            </div>
-          ) : exam && questions.length > 0 ? (
-            <div>
-              <div style={{ marginBottom: '30px' }}>
-                <h1 style={{ fontSize: '28px', marginBottom: '16px', color: '#1f2937' }}>
-                  {exam.title}
-                </h1>
-                <div style={{ display: 'flex', gap: '24px', color: '#6b7280', fontSize: '16px' }}>
-                  <span>Thời gian: {exam.duration} phút</span>
-                  <span>Số câu: {questions.length}</span>
+      <div style={{ padding: '32px 40px', maxWidth: '1540px', margin: '0 auto', background: '#f8fafc', minHeight: '100vh' }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '80px', color: '#6b7280' }}>Đang tải...</div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '80px', color: '#dc2626' }}>{error}</div>
+        ) : exam && questions.length > 0 ? (
+          <div>
+            {/* Info header */}
+            <div style={{ background: 'white', borderRadius: '16px', padding: '24px 30px', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', marginBottom: '28px', borderLeft: '5px solid #667eea' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                <button onClick={() => window.history.back()} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: '9px', border: 'none', background: '#f3f4f6', color: '#374151', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
+                  <FaArrowLeft /> Quay lại
+                </button>
+                <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '800', color: '#1f2937', flex: 1, textAlign: 'center' }}>{exam.title}</h1>
+                <div style={{ fontSize: '13px', color: '#6b7280', background: '#f9fafb', borderRadius: '8px', padding: '6px 14px' }}>
+                  Câu {tCurrent + 1} / {questions.length}
                 </div>
               </div>
-              
-              <div style={{ display: 'flex', gap: '20px' }}>
-                <div style={{ flex: '1' }}>
-                  {questions.map((question, index) => (
-                    <div key={question.id} style={{
-                      background: '#f9fafb',
-                      padding: '24px',
-                      borderRadius: '12px',
-                      marginBottom: '20px',
-                      border: '1px solid #e5e7eb'
-                    }}>
-                      <div style={{ marginBottom: '16px' }}>
-                        <span style={{
-                          background: '#3b82f6',
-                          color: 'white',
-                          padding: '4px 12px',
-                          borderRadius: '20px',
-                          fontSize: '14px',
-                          fontWeight: 'bold'
-                        }}>
-                          Câu {index + 1}
-                        </span>
-                      </div>
-                      
-                      <div style={{ fontSize: '18px', lineHeight: '1.6', marginBottom: '20px', color: '#1f2937' }}>
-                        {question.text}
-                      </div>
-                      
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {question.options && question.options.map((option, optIndex) => {
-                          if (!option) return null;
-                          const letter = ['A', 'B', 'C', 'D'][optIndex];
-                          const isCorrect = letter === question.correctAnswer;
-                          
-                          return (
-                            <div key={optIndex} style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '16px',
-                              padding: '16px',
-                              background: isCorrect ? '#dcfce7' : '#f3f4f6',
-                              border: isCorrect ? '2px solid #16a34a' : '2px solid #e5e7eb',
-                              borderRadius: '8px'
-                            }}>
-                              <div style={{
-                                width: '32px',
-                                height: '32px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: isCorrect ? '#16a34a' : '#6b7280',
-                                color: 'white',
-                                borderRadius: '50%',
-                                fontWeight: 'bold'
-                              }}>
-                                {letter}
-                              </div>
-                              <div style={{ flex: 1, lineHeight: '1.5' }}>{option}</div>
-                              {isCorrect && (
-                                <FaCheckCircle style={{ color: '#16a34a', fontSize: '20px' }} />
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', fontSize: '13px', color: '#6b7280', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f3f4f6' }}>
+                <span>⏱ Thời gian: <strong style={{ color: '#1f2937' }}>{exam.duration} phút</strong></span>
+                <span>📝 Số câu: <strong style={{ color: '#1f2937' }}>{questions.length}</strong></span>
+                <span>🔁 Số lần: <strong style={{ color: exam.max_attempts ? '#f59e0b' : '#16a34a' }}>{exam.max_attempts ?? 'Không giới hạn'}</strong></span>
+                <span>📅 Hạn nộp: {exam.due_date
+                  ? <strong style={{ color: '#dc2626' }}>{new Date(exam.due_date).toLocaleString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</strong>
+                  : <strong style={{ color: '#16a34a' }}>Không giới hạn</strong>}
+                </span>
+                {exam.created_by_name && <span>👤 Người tạo: <strong style={{ color: '#1f2937' }}>{exam.created_by_name}</strong></span>}
+              </div>
+            </div>
+
+            {/* Slide layout */}
+            <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+              {/* Main slide */}
+              <div style={{ flex: 1 }}>
+                <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: '18px', padding: '3px', boxShadow: '0 10px 40px rgba(102,126,234,0.25)' }}>
+                  <div style={{ background: 'white', borderRadius: '16px', padding: '36px', minHeight: '360px', display: 'flex', flexDirection: 'column' }}>
+                    {/* Badge row */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' }}>
+                      <span style={{ background: 'linear-gradient(135deg,#667eea,#764ba2)', color: 'white', padding: '7px 20px', borderRadius: '20px', fontSize: '14px', fontWeight: '700' }}>
+                        Câu {tCurrent + 1} / {questions.length}
+                      </span>
+                      <span style={{ background: '#dcfce7', color: '#16a34a', padding: '7px 18px', borderRadius: '20px', fontSize: '14px', fontWeight: '700' }}>
+                        ✔ Đáp án: {tQuestion?.correctAnswer}
+                      </span>
                     </div>
-                  ))}
-                </div>
-                
-                <div style={{ width: '300px', position: 'sticky', top: '20px' }}>
-                  <div style={{
-                    background: '#f3f4f6',
-                    padding: '20px',
-                    borderRadius: '12px',
-                    border: '1px solid #e5e7eb'
-                  }}>
-                    <h3 style={{ fontSize: '18px', marginBottom: '16px', color: '#1f2937' }}>
-                      Tóm tắt đề thi
-                    </h3>
+
+                    {/* Question text */}
+                    <p style={{ fontSize: '19px', lineHeight: '1.8', color: '#1e293b', fontWeight: '500', marginBottom: '26px', flex: 1 }}>
+                      {tQuestion?.text}
+                    </p>
+
+                    {/* Image */}
+                    {tQuestion?.image && (
+                      <img src={tQuestion.image} alt="Ảnh câu hỏi" style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain', borderRadius: '10px', marginBottom: '20px', border: '1px solid #e5e7eb' }} />
+                    )}
+
+                    {/* Options */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Tổng số câu:</span>
-                        <strong>{questions.length}</strong>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Thời gian:</span>
-                        <strong>{exam.duration} phút</strong>
-                      </div>
+                      {tQuestion?.options?.map((option, optIndex) => {
+                        if (!option) return null;
+                        const letter = ['A', 'B', 'C', 'D'][optIndex];
+                        const isCorrect = letter === tQuestion?.correctAnswer;
+                        return (
+                          <div key={optIndex} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', borderRadius: '12px', background: isCorrect ? '#f0fdf4' : '#f9fafb', border: `2px solid ${isCorrect ? '#16a34a' : '#e5e7eb'}` }}>
+                            <div style={{ width: '36px', height: '36px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: isCorrect ? '#16a34a' : '#e5e7eb', color: isCorrect ? 'white' : '#6b7280', fontWeight: 'bold', fontSize: '15px' }}>{letter}</div>
+                            <span style={{ flex: 1, fontSize: '16px', color: isCorrect ? '#15803d' : '#374151', fontWeight: isCorrect ? '600' : '400' }}>{option}</span>
+                            {isCorrect && <FaCheckCircle style={{ color: '#16a34a', fontSize: '18px', flexShrink: 0 }} />}
+                          </div>
+                        );
+                      })}
                     </div>
-                    
-                    <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e5e7eb' }}>
-                      <h4 style={{ fontSize: '16px', marginBottom: '12px', color: '#1f2937' }}>
-                        Đáp án đúng
-                      </h4>
-                      {questions.map((q, index) => (
-                        <div key={q.id} style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          padding: '8px 0',
-                          borderBottom: '1px solid #e5e7eb'
-                        }}>
-                          <span>Câu {index + 1}:</span>
-                          <strong style={{ color: '#16a34a' }}>{q.correctAnswer}</strong>
-                        </div>
-                      ))}
-                    </div>
+                  </div>
+                </div>
+
+                {/* Navigation */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '20px', gap: '12px' }}>
+                  <button onClick={() => setCurrent(c => Math.max(0, c - 1))} disabled={tCurrent === 0}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '11px 26px', borderRadius: '10px', border: 'none', fontWeight: '600', fontSize: '15px', cursor: tCurrent === 0 ? 'not-allowed' : 'pointer', background: tCurrent === 0 ? '#e5e7eb' : 'linear-gradient(135deg,#667eea,#764ba2)', color: tCurrent === 0 ? '#9ca3af' : 'white', transition: 'all 0.2s' }}>
+                    <FaArrowLeft /> Câu trước
+                  </button>
+
+                  {/* Dot indicators */}
+                  <div style={{ display: 'flex', gap: '7px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center', flex: 1 }}>
+                    {questions.map((_, i) => (
+                      <button key={i} onClick={() => setCurrent(i)} title={`Câu ${i + 1}`}
+                        style={{ width: i === tCurrent ? '28px' : '10px', height: '10px', borderRadius: '5px', border: 'none', padding: 0, cursor: 'pointer', background: i === tCurrent ? 'linear-gradient(135deg,#667eea,#764ba2)' : '#d1d5db', transition: 'all 0.3s ease' }} />
+                    ))}
+                  </div>
+
+                  <button onClick={() => setCurrent(c => Math.min(questions.length - 1, c + 1))} disabled={tCurrent === questions.length - 1}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '11px 26px', borderRadius: '10px', border: 'none', fontWeight: '600', fontSize: '15px', cursor: tCurrent === questions.length - 1 ? 'not-allowed' : 'pointer', background: tCurrent === questions.length - 1 ? '#e5e7eb' : 'linear-gradient(135deg,#667eea,#764ba2)', color: tCurrent === questions.length - 1 ? '#9ca3af' : 'white', transition: 'all 0.2s' }}>
+                    Câu tiếp <FaArrowRight />
+                  </button>
+                </div>
+              </div>
+
+              {/* Sidebar answer key */}
+              <div style={{ width: '200px', flexShrink: 0, position: 'sticky', top: '20px' }}>
+                <div style={{ background: 'white', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+                  <div style={{ background: 'linear-gradient(135deg,#667eea,#764ba2)', padding: '14px 18px' }}>
+                    <h4 style={{ margin: 0, color: 'white', fontSize: '14px', fontWeight: '700' }}>🗂 Bảng đáp án</h4>
+                  </div>
+                  <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '500px', overflowY: 'auto' }}>
+                    {questions.map((q, index) => (
+                      <button key={q.id} onClick={() => setCurrent(index)}
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '8px', border: 'none', background: index === tCurrent ? '#ede9fe' : 'transparent', outline: index === tCurrent ? '2px solid #667eea' : '1px solid #f3f4f6', cursor: 'pointer', transition: 'all 0.15s' }}>
+                        <span style={{ fontSize: '13px', color: index === tCurrent ? '#5b21b6' : '#6b7280', fontWeight: index === tCurrent ? '700' : '400' }}>Câu {index + 1}</span>
+                        <span style={{ fontWeight: '700', fontSize: '14px', color: '#16a34a', background: '#dcfce7', padding: '2px 10px', borderRadius: '12px' }}>{q.correctAnswer}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
             </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div>Không tìm thấy đề thi</div>
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '80px', color: '#6b7280' }}>Không tìm thấy đề thi hoặc chưa có câu hỏi.</div>
+        )}
       </div>
     );
   }
@@ -452,6 +448,83 @@ const ExamDetail = () => {
   }
 
   if (submitResult) {
+    // REVIEW ANSWERS MODE
+    if (showReview) {
+      return (
+        <div style={{ background: '#f8fafc', minHeight: '100vh', padding: '30px' }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <div>
+                <h2 style={{ margin: 0, color: '#1f2937' }}>Xem lại đáp án</h2>
+                <p style={{ margin: '4px 0 0', color: '#6b7280' }}>{exam?.title}</p>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '12px', fontSize: '14px', alignItems: 'center' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#16a34a' }}>✅ Đúng: {submitResult.correctCount || 0}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#dc2626' }}>❌ Sai: {(submitResult.totalQuestions || 0) - (submitResult.correctCount || 0)}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#3b82f6' }}>⭐ Điểm: {submitResult.score || 0}/10</span>
+                </div>
+                <button
+                  onClick={() => setShowReview(false)}
+                  style={{ padding: '10px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
+                >
+                  &larr; Quay lại kết quả
+                </button>
+              </div>
+            </div>
+
+            {questions.map((q, index) => {
+              const userAnswer = answers[q.id];
+              const isCorrect = userAnswer === q.correctAnswer;
+              const didAnswer = !!userAnswer;
+              return (
+                <div key={q.id} style={{
+                  background: 'white', borderRadius: '12px', padding: '24px', marginBottom: '16px',
+                  border: `2px solid ${!didAnswer ? '#e5e7eb' : isCorrect ? '#16a34a' : '#dc2626'}`,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                    <span style={{ background: '#3b82f6', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold' }}>Câu {index + 1}</span>
+                    {!didAnswer ? (
+                      <span style={{ color: '#d97706', fontWeight: '600', fontSize: '14px' }}>⚠️ Chưa trả lời</span>
+                    ) : isCorrect ? (
+                      <span style={{ color: '#16a34a', fontWeight: '600', fontSize: '14px' }}>✅ Đúng</span>
+                    ) : (
+                      <span style={{ color: '#dc2626', fontWeight: '600', fontSize: '14px' }}>❌ Sai</span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '17px', lineHeight: '1.6', margin: '0 0 16px', color: '#1f2937' }}>{q.text}</p>
+                  {q.image && (
+                    <img src={q.image} alt="Ảnh minh họa" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', border: '1px solid #e5e7eb', objectFit: 'contain', marginBottom: '12px' }} />
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {q.options.map((opt, i) => {
+                      if (!opt) return null;
+                      const letter = ['A', 'B', 'C', 'D'][i];
+                      const isCorrectOpt = letter === q.correctAnswer;
+                      const isUserOpt = letter === userAnswer;
+                      let bg = '#f9fafb', border = '#e5e7eb', textColor = '#374151';
+                      if (isCorrectOpt) { bg = '#dcfce7'; border = '#16a34a'; textColor = '#15803d'; }
+                      else if (isUserOpt && !isCorrect) { bg = '#fee2e2'; border = '#dc2626'; textColor = '#b91c1c'; }
+                      return (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: bg, border: `2px solid ${border}`, borderRadius: '8px' }}>
+                          <div style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isCorrectOpt ? '#16a34a' : isUserOpt ? '#dc2626' : '#9ca3af', color: 'white', borderRadius: '50%', fontWeight: 'bold', fontSize: '13px', flexShrink: 0 }}>{letter}</div>
+                          <span style={{ flex: 1, color: textColor, fontWeight: isCorrectOpt ? '600' : '400' }}>{opt}</span>
+                          {isCorrectOpt && <span style={{ color: '#16a34a', fontWeight: '700' }}>✔ Đúng</span>}
+                          {isUserOpt && !isCorrect && <span style={{ color: '#dc2626', fontWeight: '700' }}>Bạn chọn</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // NORMAL RESULT SCREEN
     return (
       <div style={{
         display: 'flex',
@@ -518,7 +591,13 @@ const ExamDetail = () => {
           
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
             <button 
-              onClick={() => window.history.back()}
+              onClick={() => {
+                if (exam?.exam_class) {
+                  window.location.href = `/classes/${exam.exam_class}`;
+                } else {
+                  window.history.back();
+                }
+              }}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -532,9 +611,65 @@ const ExamDetail = () => {
                 fontWeight: '600'
               }}
             >
-              <FaArrowLeft /> Quay lại
+              <FaArrowLeft /> Quay lại lớp học
+            </button>
+            <button
+              onClick={() => setShowReview(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 24px',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              <FaBook /> Xem lại đáp án
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isExpired && !isTeacherLike && !submitResult) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)',
+        color: 'white'
+      }}>
+        <div style={{ textAlign: 'center', maxWidth: '500px', background: 'white', padding: '40px', borderRadius: '16px', color: '#1f2937' }}>
+          <FaExclamationTriangle style={{ fontSize: '64px', color: '#ef4444', marginBottom: '20px' }} />
+          <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>Đã hết hạn làm bài</h2>
+          <p style={{ color: '#4b5563', marginBottom: '24px', lineHeight: '1.6' }}>
+            Rất tiếc, bài thi này đã hết hạn nộp vào lúc:<br/>
+            <strong style={{ color: '#ef4444', fontSize: '18px' }}>{deadlineFormatted}</strong>
+          </p>
+          <button 
+            onClick={() => window.history.back()}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 24px',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            <FaArrowLeft /> Quay lại
+          </button>
         </div>
       </div>
     );
@@ -616,6 +751,15 @@ const ExamDetail = () => {
             <h1 style={{ margin: '0', fontSize: '24px', fontWeight: 'bold' }}>{exam?.title}</h1>
             <div style={{ display: 'flex', gap: '20px', marginTop: '4px', fontSize: '14px', color: '#718096' }}>
               <span><FaUserGraduate /> {getUserFullName()}</span>
+              {deadlineFormatted ? (
+                <span style={{ color: isExpired ? '#ef4444' : '#059669', fontWeight: 'bold' }}>
+                  <FaClock /> Hạn nộp: {deadlineFormatted}
+                </span>
+              ) : (
+                <span style={{ color: '#10b981', fontWeight: 'bold' }}>
+                  <FaClock /> Hạn nộp: Không giới hạn
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -850,6 +994,13 @@ const ExamDetail = () => {
               <div style={{ lineHeight: '1.6', marginBottom: '16px', fontSize: '18px' }}>
                 {question.text}
               </div>
+              {question.image && (
+                <img
+                  src={question.image}
+                  alt="Ảnh minh họa"
+                  style={{ maxWidth: '100%', maxHeight: '320px', borderRadius: '10px', border: '1px solid #e2e8f0', objectFit: 'contain', marginTop: '8px' }}
+                />
+              )}
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

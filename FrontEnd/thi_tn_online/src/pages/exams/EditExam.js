@@ -32,6 +32,7 @@ const EditExam = () => {
   const [examTitle, setExamTitle] = useState("");
   const [duration, setDuration] = useState(15);
   const [maxAttempts, setMaxAttempts] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -47,6 +48,13 @@ const EditExam = () => {
         setExamTitle(examData.title || "");
         setDuration(examData.duration || 15);
         setMaxAttempts(examData.max_attempts || "");
+        
+        // Format due_date for datetime-local input (YYYY-MM-DDTHH:MM)
+        if (examData.due_date) {
+          const date = new Date(examData.due_date);
+          const formattedDate = date.toISOString().slice(0, 16);
+          setDueDate(formattedDate);
+        }
         
         if (examData.questions && examData.questions.length > 0) {
           setQuestions(examData.questions);
@@ -160,6 +168,7 @@ const EditExam = () => {
         title: examTitle,
         duration: Number(duration),
         max_attempts: Number(maxAttempts) || null,
+        due_date: dueDate || null,
         questions: questions.map(q => ({
           content: q.content,
           options: q.options,
@@ -253,6 +262,17 @@ const EditExam = () => {
                 onChange={(e) => setMaxAttempts(e.target.value)}
                 placeholder="Để trống nếu không giới hạn"
                 min="1"
+                disabled={saving}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>📅 Hạn nộp bài</label>
+              <input
+                type="datetime-local"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                title="Sau thời gian này học sinh không thể nộp bài"
                 disabled={saving}
               />
             </div>

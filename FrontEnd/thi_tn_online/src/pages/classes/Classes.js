@@ -6,6 +6,7 @@ import {
   joinClassByCode,
   leaveClass,
   listClasses,
+  deleteClass,
 } from "../../api/classes";
 import { useAuth } from "../../contexts/AuthContext";
 import { 
@@ -13,6 +14,7 @@ import {
   FaUserGraduate, 
   FaPlus, 
   FaSignOutAlt, 
+  FaTrash,
   FaUsers, 
   FaBook, 
   FaCalendarAlt,
@@ -44,6 +46,7 @@ const Classes = () => {
   const [isJoining, setIsJoining] = useState(false);
 
   const [leavingId, setLeavingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const title = useMemo(
     () => (isTeacherLike ? "Lớp học của tôi (giáo viên)" : "Lớp học của tôi"),
@@ -138,10 +141,27 @@ const Classes = () => {
     }
   };
 
+  const handleDelete = async (classId, className) => {
+    if (!window.confirm(`[CẢNH BÁO QUAN TRỌNG]\nBạn có chắc chắn muốn GIẢI TÁN lớp "${className}" không?\n\n- Toàn bộ dữ liệu điểm của lớp sẽ bị XOÁ VĨNH VIỄN.\n- Toàn bộ bài thi thuộc lớp này sẽ biến mất.\n- Học sinh sẽ không thể truy cập lại lớp này!`)) {
+      return;
+    }
+    setDeletingId(classId);
+    setError("");
+    try {
+      await deleteClass({ classId });
+      await load();
+    } catch (e) {
+      const msg = e?.response?.data?.detail || "Giải tán lớp thất bại. Đảm bảo bạn có quyền xoá lớp này.";
+      setError(msg);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const getStats = (cls) => {
     const studentCount = cls.students?.length || 0;
-    const examCount = cls.exams?.length || 0;
-    return { studentCount, examCount };
+    const subjectCount = cls.subjects?.length || 0;
+    return { studentCount, subjectCount };
   };
 
   if (loading) {
@@ -292,8 +312,8 @@ const Classes = () => {
             <FaBook />
           </div>
           <div className="stat-content">
-            <h3>{classes.reduce((sum, cls) => sum + (cls.exams?.length || 0), 0)}</h3>
-            <p>Tổng số bài thi</p>
+            <h3>{classes.reduce((sum, cls) => sum + (cls.subjects?.length || 0), 0)}</h3>
+            <p>Tổng số môn học</p>
           </div>
         </div>
       </div>
@@ -323,7 +343,7 @@ const Classes = () => {
           </div>
         ) : (
           filteredAndSortedClasses.map((cls) => {
-            const { studentCount, examCount } = getStats(cls);
+            const { studentCount, subjectCount } = getStats(cls);
             return (
               <div
                 key={cls.id}
@@ -342,6 +362,12 @@ const Classes = () => {
                 <div className="class-content">
                   <h3 className="class-name">{cls.name}</h3>
                   
+                  {!isTeacherLike && cls.teacher_full_name && (
+                    <div className="class-teacher">
+                      <FaChalkboardTeacher /> Giáo viên: <strong>{cls.teacher_full_name}</strong>
+                    </div>
+                  )}
+                  
                   {isTeacherLike && (
                     <div className="class-code">
                       <FaCode /> Mã lớp: <strong>{cls.code}</strong>
@@ -355,7 +381,7 @@ const Classes = () => {
                     </div>
                     <div className="meta-item">
                       <FaBook />
-                      <span>{examCount} bài thi</span>
+                      <span>{subjectCount} môn học</span>
                     </div>
                     <div className="meta-item">
                       <FaCalendarAlt />
@@ -365,11 +391,34 @@ const Classes = () => {
                 </div>
 
                 <div className="class-actions">
-                  <button className="view-class-btn primary">
-                    <FaChalkboardTeacher /> Xem chi tiết
+                  <button className="view-class-btn primary" onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/classes/${cls.id}`);
+                  }}>
+                    <FaChalkboardTeacher /> Xem
                   </button>
                   
-                  {!isTeacherLike && (
+                  {isTeacherLike ? (
+                    <button
+                      className="leave-class-btn danger"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(cls.id, cls.name);
+                      }}
+                      disabled={deletingId === cls.id}
+                    >
+                      {deletingId === cls.id ? (
+                        <>
+                          <div className="btn-spinner"></div>
+                          Xóa...
+                        </>
+                      ) : (
+                        <>
+                          <FaTrash /> Giải tán
+                        </>
+                      )}
+                    </button>
+                  ) : (
                     <button
                       className="leave-class-btn danger"
                       onClick={(e) => {
@@ -381,7 +430,7 @@ const Classes = () => {
                       {leavingId === cls.id ? (
                         <>
                           <div className="btn-spinner"></div>
-                          Đang rời...
+                          Rời...
                         </>
                       ) : (
                         <>

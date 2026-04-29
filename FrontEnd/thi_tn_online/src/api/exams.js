@@ -13,14 +13,39 @@ export async function createExam(payload) {
 }
 
 export async function updateExam(examId, payload) {
-  const res = await apiClient.put(`/api/exams/${examId}/edit/`, payload);
+  const res = await apiClient.put(`/api/exams/${examId}/edit/`, {
+    title: payload.title,
+    duration: payload.duration,
+    max_attempts: payload.max_attempts,
+    due_date: payload.due_date,
+    questions: payload.questions
+  });
+  return res.data;
+}
+
+export async function deleteExam(examId) {
+  const res = await apiClient.delete(`/api/exams/${examId}/edit/`);
   return res.data;
 }
 
 export async function createQuestion({ examId, question }) {
-  const res = await apiClient.post(`/api/exams/${examId}/questions/`, question);
+  const formData = new FormData();
+  formData.append('question_text', question.question_text);
+  formData.append('option_a', question.option_a || '');
+  formData.append('option_b', question.option_b || '');
+  formData.append('option_c', question.option_c || '');
+  formData.append('option_d', question.option_d || '');
+  formData.append('correct_answer', question.correct_answer || 'A');
+  formData.append('exam', question.exam);
+  if (question.image) {
+    formData.append('image', question.image);
+  }
+  const res = await apiClient.post(`/api/exams/${examId}/questions/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return res.data;
 }
+
 
 export async function getExam({ examId }) {
   const res = await apiClient.get(`/api/exams/${examId}/`);

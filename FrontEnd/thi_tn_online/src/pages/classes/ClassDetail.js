@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getClassDetail, removeStudentFromClass } from "../../api/classes";
-import { listExams } from "../../api/exams";
-import { listClassSubmissions } from "../../api/submissions";
+import { getClassDetail, removeStudentFromClass, updateClass } from "../../api/classes";
+import { listExams, deleteExam } from "../../api/exams";
+import { getSubjectsByClass, createSubject, deleteSubject, getExamsBySubject } from "../../api/admin";
+import { listClassSubmissions, exportClassSubmissions, deleteSubmission, approveSubmission } from "../../api/submissions";
 import { useAuth } from "../../contexts/AuthContext";
 import { 
   FaArrowLeft, 
@@ -39,7 +40,7 @@ const ClassDetail = () => {
     // Try to get from student object first
     const firstName = student.first_name || '';
     const lastName = student.last_name || '';
-    const fullName = `${firstName} ${lastName}`.trim();
+    const fullName = `${lastName} ${firstName}`.trim();
     
     if (fullName) return fullName;
     
@@ -60,11 +61,93 @@ const ClassDetail = () => {
   const [removingId, setRemovingId] = useState(null);
   const [exams, setExams] = useState([]);
   const [loadingExams, setLoadingExams] = useState(true);
+  const [examSearchTerm, setExamSearchTerm] = useState("");
+  const [removingExamId, setRemovingExamId] = useState(null);
+  const [removingSubmissionId, setRemovingSubmissionId] = useState(null);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveTarget, setApproveTarget] = useState(null);
+  const [approveForm, setApproveForm] = useState({ score: 0, teacher_note: "" });
+  const [isApproving, setIsApproving] = useState(false);
   const [submissions, setSubmissions] = useState([]);
   const [loadingSubs, setLoadingSubs] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [exporting, setExporting] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState("");
+  const [savingName, setSavingName] = useState(false);
+
+  // Môn học
+  const [subjects, setSubjects] = useState([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState(null); // môn đang xem bài thi
+  const [subjectExams, setSubjectExams] = useState([]);
+  const [loadingSubjectExams, setLoadingSubjectExams] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState("");
+  const [addingSubject, setAddingSubject] = useState(false);
+  const [removingSubjectId, setRemovingSubjectId] = useState(null);
+
+  // Load môn học của lớp
+  const loadSubjects = async () => {
+    setLoadingSubjects(true);
+    try {
+      const data = await getSubjectsByClass(classId);
+      setSubjects(data || []);
+    } catch (e) {
+      console.error('Lỗi load subjects:', e);
+    } finally {
+      setLoadingSubjects(false);
+    }
+  };
+
+  // Xem bài thi của môn học
+  const handleSelectSubject = async (subject) => {
+    setSelectedSubject(subject);
+    setLoadingSubjectExams(true);
+    try {
+      const data = await getExamsBySubject(subject.id);
+      setSubjectExams(data || []);
+    } catch (e) {
+      console.error('Lỗi load exams by subject:', e);
+    } finally {
+      setLoadingSubjectExams(false);
+    }
+  };
+
+  // Thêm môn học mới
+  const handleAddSubject = async (e) => {
+    e.preventDefault();
+    if (!newSubjectName.trim()) return;
+    setAddingSubject(true);
+    try {
+      await createSubject({ name: newSubjectName.trim(), class_obj: parseInt(classId) });
+      setNewSubjectName("");
+      await loadSubjects();
+    } catch (err) {
+      alert('Không thể thêm môn học.');
+    } finally {
+      setAddingSubject(false);
+    }
+  };
+
+  // Xóa môn học
+  const handleDeleteSubject = async (subjectId) => {
+    if (!window.confirm('Xóa môn học này sẽ xóa toàn bộ bài thi bên trong. Bạn chắc chắn?')) return;
+    setRemovingSubjectId(subjectId);
+    try {
+      await deleteSubject(subjectId);
+      if (selectedSubject?.id === subjectId) {
+        setSelectedSubject(null);
+        setSubjectExams([]);
+      }
+      await loadSubjects();
+    } catch (err) {
+      alert('Không thể xóa môn học.');
+    } finally {
+      setRemovingSubjectId(null);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -74,17 +157,24 @@ const ClassDetail = () => {
         const data = await getClassDetail({ classId });
         setCls(data);
 
-        // load exams of this class
+        // load exams (tương thích ngược) + subjects + submissions
         setLoadingExams(true);
         const [exs, subs] = await Promise.all([
           listExams({ class_id: classId }),
           listClassSubmissions({ classId }),
         ]);
-        console.log('Submissions data:', subs); // Debug log
         setExams(exs || []);
         setLoadingExams(false);
         setSubmissions(subs || []);
         setLoadingSubs(false);
+
+        // Load môn học
+        try {
+          const subjData = await getSubjectsByClass(classId);
+          setSubjects(subjData || []);
+        } catch (e) {
+          console.error('Lỗi load subjects:', e);
+        }
       } catch (e) {
         const msg =
           e?.response?.status === 403
@@ -101,6 +191,36 @@ const ClassDetail = () => {
       load();
     }
   }, [classId]);
+
+  useEffect(() => {
+    if (cls) {
+      setEditedName(cls.name);
+    }
+  }, [cls]);
+
+  const handleSaveName = async () => {
+    if (!editedName.trim() || editedName === cls.name) {
+      setIsEditingName(false);
+      return;
+    }
+    setSavingName(true);
+    try {
+      await updateClass({ classId, name: editedName.trim() });
+      setCls({ ...cls, name: editedName.trim() });
+      setIsEditingName(false);
+      
+      const toast = document.createElement('div');
+      toast.className = 'toast-success';
+      toast.textContent = 'Đã cập nhật tên lớp thành công!';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } catch (e) {
+      const msg = e?.response?.data?.name?.[0] || e?.response?.data?.detail || 'Lỗi khi cập nhật tên lớp.';
+      setError(msg);
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const handleRemoveStudent = async (studentId) => {
     if (!window.confirm("Bạn chắc chắn muốn xoá học sinh này khỏi lớp?")) {
@@ -120,6 +240,73 @@ const ClassDetail = () => {
       setError(msg);
     } finally {
       setRemovingId(null);
+    }
+  };
+
+  const handleRemoveExam = async (examId) => {
+    if (!window.confirm("Bạn chắc chắn muốn xóa bài thi này? Mọi kết quả của bài thi cũng có thể bị mất.")) {
+      return;
+    }
+    setRemovingExamId(examId);
+    try {
+      await deleteExam(examId);
+      setExams((prev) => prev.filter((ex) => ex.id !== examId));
+      const toast = document.createElement('div');
+      toast.className = 'toast-success';
+      toast.textContent = 'Đã xóa bài thi thành công!';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } catch(e) {
+      const msg = e?.response?.data?.detail || "Không xoá được bài thi. Vui lòng thử lại.";
+      alert(msg);
+    } finally {
+      setRemovingExamId(null);
+    }
+  };
+
+  const handleRemoveSubmission = async (submissionId) => {
+    if (!window.confirm("Bạn chắc chắn muốn xóa bài nộp này?")) return;
+    setRemovingSubmissionId(submissionId);
+    try {
+      await deleteSubmission(submissionId);
+      setSubmissions((prev) => prev.filter((s) => s.id !== submissionId));
+      const toast = document.createElement('div');
+      toast.className = 'toast-success';
+      toast.textContent = 'Đã xóa bài nộp thành công!';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } catch(e) {
+      alert("Không xóa được bài nộp.");
+    } finally {
+      setRemovingSubmissionId(null);
+    }
+  };
+
+  const openApproveModal = (sub) => {
+    setApproveTarget(sub);
+    setApproveForm({ score: sub.score, teacher_note: sub.teacher_note || "" });
+    setApproveModalOpen(true);
+  };
+
+  const handleApproveSubmission = async (e) => {
+    e.preventDefault();
+    setIsApproving(true);
+    try {
+      const updated = await approveSubmission(approveTarget.id, {
+        score: approveForm.score,
+        teacher_note: approveForm.teacher_note
+      });
+      setSubmissions(prev => prev.map(s => s.id === approveTarget.id ? updated.submission : s));
+      setApproveModalOpen(false);
+      const toast = document.createElement('div');
+      toast.className = 'toast-success';
+      toast.textContent = 'Cập nhật bài nộp thành công!';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } catch(err) {
+      alert("Chỉnh sửa thất bại.");
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -148,6 +335,10 @@ const ClassDetail = () => {
     student.email.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
+  const filteredExams = exams.filter(ex => 
+    ex.title?.toLowerCase().includes(examSearchTerm.toLowerCase())
+  );
+
   const filteredSubmissions = submissions.filter(sub => {
     const studentFullName = sub.student_full_name || sub.student_username || '';
     const matchesSearch = studentFullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -170,6 +361,48 @@ const ClassDetail = () => {
     return Math.round((passed / submissions.length) * 100);
   };
 
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const response = await exportClassSubmissions({ classId });
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Get filename from header if possible, else default
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `BangDiem_${cls?.name || classId}.csv`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match) filename = match[1];
+      }
+      
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      const toast = document.createElement('div');
+      toast.className = 'toast-success';
+      toast.textContent = 'Đã xuất file bảng điểm thành công!';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } catch (e) {
+      console.error('Export error:', e);
+      const toast = document.createElement('div');
+      toast.className = 'toast-error';
+      toast.textContent = 'Lỗi khi xuất file. Vui lòng thử lại.';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="class-detail-container">
       {/* Header */}
@@ -182,7 +415,51 @@ const ClassDetail = () => {
             <FaArrowLeft /> Quay lại
           </button>
           <div className="class-title">
-            <h1>{cls ? cls.name : `Lớp #${classId}`}</h1>
+            {isEditingName ? (
+              <div className="edit-name-group">
+                <input
+                  type="text"
+                  className="edit-name-input"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  disabled={savingName}
+                  autoFocus
+                  onKeyPress={(e) => e.key === 'Enter' && handleSaveName()}
+                />
+                <div className="edit-actions">
+                  <button 
+                    className="save-btn" 
+                    onClick={handleSaveName}
+                    disabled={savingName || !editedName.trim()}
+                  >
+                    {savingName ? <div className="mini-spinner-white"></div> : 'Lưu'}
+                  </button>
+                  <button 
+                    className="cancel-btn" 
+                    onClick={() => {
+                      setIsEditingName(false);
+                      setEditedName(cls.name);
+                    }}
+                    disabled={savingName}
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="title-row">
+                <h1>{cls ? cls.name : `Lớp #${classId}`}</h1>
+                {isTeacherLike && cls && (
+                  <button 
+                    className="edit-title-btn"
+                    onClick={() => setIsEditingName(true)}
+                    title="Sửa tên lớp"
+                  >
+                    <FaEdit />
+                  </button>
+                )}
+              </div>
+            )}
             <span className="class-id">ID: {classId}</span>
           </div>
         </div>
@@ -274,11 +551,11 @@ const ClassDetail = () => {
             >
               <FaUsers /> Học sinh ({cls.students_count ?? 0})
             </button>
-            <button 
-              className={`tab-btn ${activeTab === "exams" ? "active" : ""}`}
-              onClick={() => setActiveTab("exams")}
+            <button
+              className={`tab-btn ${activeTab === "subjects" ? "active" : ""}`}
+              onClick={() => setActiveTab("subjects")}
             >
-              <FaClipboardList /> Đề thi ({exams.length})
+              <FaBook /> Môn học ({subjects.length})
             </button>
             {isTeacherLike && (
               <button 
@@ -301,6 +578,10 @@ const ClassDetail = () => {
                       <div className="info-item">
                         <span className="info-label">Tên lớp:</span>
                         <span className="info-value">{cls.name}</span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">Giáo viên:</span>
+                        <span className="info-value"><strong>{cls.teacher_full_name || cls.teacher_name}</strong></span>
                       </div>
                       {isTeacherLike && (
                         <div className="info-item">
@@ -401,22 +682,165 @@ const ClassDetail = () => {
               </div>
             )}
 
+            {activeTab === "subjects" && (
+              <div className="exams-content">
+                <div className="content-header">
+                  <h3><FaBook /> Môn học của lớp</h3>
+                </div>
+
+                {/* Form thêm môn học mới (chỉ teacher/admin) */}
+                {isTeacherLike && (
+                  <form onSubmit={handleAddSubject} style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+                    <input
+                      type="text"
+                      placeholder="Tên môn học mới..."
+                      value={newSubjectName}
+                      onChange={e => setNewSubjectName(e.target.value)}
+                      disabled={addingSubject}
+                      style={{
+                        flex: 1,
+                        padding: '8px 14px',
+                        border: '2px solid #d9d9d9',
+                        borderRadius: 8,
+                        fontSize: 15,
+                        color: '#222',
+                        background: '#fff',
+                        outline: 'none',
+                        cursor: 'text',
+                        transition: 'border-color 0.2s',
+                      }}
+                      onFocus={e => e.target.style.borderColor = '#1890ff'}
+                      onBlur={e => e.target.style.borderColor = '#d9d9d9'}
+                    />
+                    <button type="submit" className="create-btn" disabled={addingSubject || !newSubjectName.trim()}>
+                      {addingSubject ? <div className="mini-spinner-white"></div> : <><FaPlus /> Thêm môn</>}
+                    </button>
+                  </form>
+                )}
+
+                {loadingSubjects ? (
+                  <div className="loading-container"><div className="spinner"></div><p>Đang tải môn học...</p></div>
+                ) : subjects.length === 0 ? (
+                  <div className="empty-state">
+                    <FaBook className="empty-icon" />
+                    <p>Lớp chưa có môn học nào.{isTeacherLike && " Hãy thêm môn học ở trên."}</p>
+                  </div>
+                ) : (
+                  <div className="exams-grid">
+                    {subjects.map(subject => (
+                      <div
+                        key={subject.id}
+                        className={`exam-card ${selectedSubject?.id === subject.id ? 'selected' : ''}`}
+                        style={{ cursor: 'pointer', border: selectedSubject?.id === subject.id ? '2px solid var(--primary)' : undefined }}
+                        onClick={() => handleSelectSubject(subject)}
+                      >
+                        <div className="exam-header">
+                          <h4><FaBook style={{ marginRight: 8 }} />{subject.name}</h4>
+                          <span className="exam-duration">{subject.exam_count ?? 0} bài thi</span>
+                        </div>
+                        <div className="exam-actions">
+                          {isTeacherLike && (
+                            <>
+                              <button
+                                className="create-btn"
+                                onClick={e => { e.stopPropagation(); navigate(`/exams/create`, { state: { subjectId: subject.id, classId, subjectName: subject.name } }); }}
+                              >
+                                <FaPlus /> Tạo bài thi
+                              </button>
+                              <button
+                                className="remove-btn exam-del-btn"
+                                onClick={e => { e.stopPropagation(); handleDeleteSubject(subject.id); }}
+                                disabled={removingSubjectId === subject.id}
+                              >
+                                {removingSubjectId === subject.id ? <div className="mini-spinner"></div> : <FaTrash />}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Danh sách bài thi trong môn đã chọn */}
+                {selectedSubject && (
+                  <div style={{ marginTop: 32 }}>
+                    <h3><FaClipboardList /> Bài thi trong môn: <strong>{selectedSubject.name}</strong></h3>
+                    {loadingSubjectExams ? (
+                      <div className="loading-container"><div className="spinner"></div></div>
+                    ) : subjectExams.length === 0 ? (
+                      <div className="empty-state">
+                        <FaClipboardList className="empty-icon" />
+                        <p>Môn học này chưa có bài thi nào.</p>
+                        {isTeacherLike && (
+                          <button className="create-btn" onClick={() => navigate(`/exams/create`, { state: { subjectId: selectedSubject.id, classId, subjectName: selectedSubject.name } })}>
+                            <FaPlus /> Tạo bài thi đầu tiên
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="exams-grid">
+                        {subjectExams.map(exam => (
+                          <div key={exam.id} className="exam-card">
+                            <div className="exam-header">
+                              <h4>{exam.title}</h4>
+                              <span className="exam-duration"><FaClock /> {exam.duration} phút</span>
+                            </div>
+                            <div className="exam-actions">
+                              <button className="view-btn" onClick={() => navigate(`/exam/${exam.id}`)}>
+                                <FaEye /> Xem / Thi
+                              </button>
+                              {isTeacherLike && (
+                                <>
+                                  <button className="edit-btn" onClick={() => navigate(`/exams/${exam.id}/edit`)}>
+                                    <FaEdit /> Sửa
+                                  </button>
+                                  <button
+                                    className="remove-btn exam-del-btn"
+                                    onClick={() => handleRemoveExam(exam.id)}
+                                    disabled={removingExamId === exam.id}
+                                  >
+                                    {removingExamId === exam.id ? <div className="mini-spinner"></div> : <FaTrash />}
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === "exams" && (
               <div className="exams-content">
                 <div className="content-header">
                   <h3><FaClipboardList /> Đề thi của lớp</h3>
-                  {isTeacherLike && (
-                    <button
-                      className="create-btn"
-                      onClick={() =>
-                        navigate(`/exams/create`, {
-                          state: { classId },
-                        })
-                      }
-                    >
-                      <FaPlus /> Tạo đề thi mới
-                    </button>
-                  )}
+                  <div className="header-actions-row">
+                    <div className="search-box">
+                      <FaSearch className="search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Tìm kiếm bài thi..."
+                        value={examSearchTerm}
+                        onChange={(e) => setExamSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    {isTeacherLike && (
+                      <button
+                        className="create-btn"
+                        onClick={() =>
+                          navigate(`/exams/create`, {
+                            state: { classId },
+                          })
+                        }
+                      >
+                        <FaPlus /> Tạo đề thi mới
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {loadingExams ? (
@@ -443,7 +867,7 @@ const ClassDetail = () => {
                   </div>
                 ) : (
                   <div className="exams-grid">
-                    {exams.map((exam) => (
+                    {filteredExams.map((exam) => (
                       <div key={exam.id} className="exam-card">
                         <div className="exam-header">
                           <h4>{exam.title}</h4>
@@ -459,16 +883,30 @@ const ClassDetail = () => {
                             <FaEye /> Xem / Thi
                           </button>
                           {isTeacherLike && (
-                            <button 
-                              className="edit-btn"
-                              onClick={() => navigate(`/exams/${exam.id}/edit`)}
-                            >
-                              <FaEdit /> Chỉnh sửa
-                            </button>
+                            <>
+                              <button 
+                                className="edit-btn"
+                                onClick={() => navigate(`/exams/${exam.id}/edit`)}
+                              >
+                                <FaEdit /> Sửa
+                              </button>
+                              <button 
+                                className="remove-btn exam-del-btn"
+                                onClick={() => handleRemoveExam(exam.id)}
+                                disabled={removingExamId === exam.id}
+                              >
+                                {removingExamId === exam.id ? <div className="mini-spinner"></div> : <FaTrash />}
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
                     ))}
+                    {filteredExams.length === 0 && (
+                      <div className="empty-state">
+                        <p>Không có bài thi nào khớp tìm kiếm.</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -478,6 +916,19 @@ const ClassDetail = () => {
               <div className="submissions-content">
                 <div className="content-header">
                   <h3><FaClipboardList /> Bài nộp</h3>
+                  <div className="header-actions-row">
+                    <button 
+                      className="export-btn"
+                      onClick={handleExport}
+                      disabled={exporting || submissions.length === 0}
+                    >
+                      {exporting ? (
+                        <div className="mini-spinner"></div>
+                      ) : (
+                        <><FaDownload /> Xuất bảng điểm (CSV)</>
+                      )}
+                    </button>
+                  </div>
                   <div className="filter-controls">
                     <div className="search-filter-group">
                       <div className="search-box">
@@ -552,11 +1003,16 @@ const ClassDetail = () => {
                             </td>
                             <td>
                               <div className="table-actions">
-                                <button className="view-btn-small">
-                                  <FaEye />
+                                <button className="edit-btn-small" onClick={() => openApproveModal(sub)} title="Chỉnh sửa / Phê duyệt">
+                                  <FaEdit />
                                 </button>
-                                <button className="download-btn-small">
-                                  <FaDownload />
+                                <button 
+                                  className="remove-btn-small" 
+                                  onClick={() => handleRemoveSubmission(sub.id)}
+                                  disabled={removingSubmissionId === sub.id}
+                                  title="Xóa bài nộp"
+                                >
+                                  {removingSubmissionId === sub.id ? <div className="mini-spinner"></div> : <FaTrash />}
                                 </button>
                               </div>
                             </td>
@@ -571,6 +1027,48 @@ const ClassDetail = () => {
           </div>
         </>
       )}
+
+      {/* APPROVE SUBMISSION MODAL */}
+      {approveModalOpen && (
+        <div className="custom-modal-overlay" onClick={() => setApproveModalOpen(false)}>
+          <div className="custom-modal" onClick={e => e.stopPropagation()}>
+            <div className="custom-modal-header">
+              <h2><FaEdit /> Chỉnh sửa bài nộp</h2>
+              <button className="close-modal-btn" onClick={() => setApproveModalOpen(false)}>
+                <FaArrowLeft /> Hủy
+              </button>
+            </div>
+            <form className="custom-modal-body" onSubmit={handleApproveSubmission}>
+              <div className="form-group">
+                <label>Điểm số (0-10)</label>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  min="0" 
+                  max="10" 
+                  value={approveForm.score} 
+                  onChange={e => setApproveForm({...approveForm, score: e.target.value})} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Ghi chú của giáo viên (Tùy chọn)</label>
+                <textarea 
+                  rows={3} 
+                  value={approveForm.teacher_note} 
+                  onChange={e => setApproveForm({...approveForm, teacher_note: e.target.value})} 
+                  placeholder="Nhận xét bài làm..."
+                />
+              </div>
+              <div className="modal-actions-row">
+                <button type="submit" className="save-btn" disabled={isApproving}>
+                  {isApproving ? "Đang lưu..." : "Lưu thay đổi"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       
       <style jsx>{`
         .class-detail-container {
@@ -579,6 +1077,34 @@ const ClassDetail = () => {
           padding: 20px;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
+
+        /* CUSTOM MODAL FOR APPROVAL */
+        .custom-modal-overlay {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+          display: flex; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .custom-modal {
+          background: white; border-radius: 12px; width: 400px; max-width: 90vw;
+          padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .custom-modal-header {
+          display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+        }
+        .custom-modal-header h2 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px; }
+        .close-modal-btn { background: none; border: none; cursor: pointer; color: #6b7280; font-size: 14px; display: flex; align-items: center; gap: 4px; }
+        .close-modal-btn:hover { color: #1f2937; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #374151; }
+        .form-group input, .form-group textarea { width: 100%; padding: 10px; border: 1.5px solid #e5e7eb; border-radius: 8px; box-sizing: border-box; }
+        .form-group input:focus, .form-group textarea:focus { border-color: #667eea; outline: none; }
+        .modal-actions-row { display: flex; justify-content: flex-end; margin-top: 24px; }
+        .save-btn { background: #10b981; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        
+        .remove-btn-small { background: #fef2f2; color: #ef4444; border: none; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .remove-btn-small:hover { background: #ef4444; color: white; }
+        .edit-btn-small { background: #eff6ff; color: #3b82f6; border: none; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; margin-right: 6px; }
+        .edit-btn-small:hover { background: #3b82f6; color: white; }
 
         /* Header */
         .class-header {
@@ -624,6 +1150,98 @@ const ClassDetail = () => {
         .class-id {
           opacity: 0.8;
           font-size: 14px;
+          display: block;
+          margin-top: 4px;
+        }
+
+        .title-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .edit-title-btn {
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          border-radius: 6px;
+          color: white;
+          padding: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-size: 16px;
+        }
+
+        .edit-title-btn:hover {
+          background: rgba(255, 255, 255, 0.3);
+          transform: scale(1.1);
+        }
+
+        .edit-name-group {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .edit-name-input {
+          padding: 8px 12px;
+          border: 2px solid rgba(255, 255, 255, 0.5);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          font-size: 24px;
+          font-weight: 700;
+          outline: none;
+          min-width: 300px;
+        }
+
+        .edit-name-input:focus {
+          border-color: white;
+          background: rgba(255, 255, 255, 0.2);
+        }
+
+        .edit-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .save-btn, .cancel-btn {
+          padding: 8px 16px;
+          border-radius: 6px;
+          border: none;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .save-btn {
+          background: #10b981;
+          color: white;
+        }
+
+        .save-btn:hover:not(:disabled) {
+          background: #059669;
+        }
+
+        .cancel-btn {
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
+        }
+
+        .cancel-btn:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.3);
+        }
+
+        .mini-spinner-white {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top: 2px solid white;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
         }
 
         .class-code-section {
