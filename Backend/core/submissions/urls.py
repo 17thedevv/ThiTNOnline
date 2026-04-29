@@ -3,8 +3,9 @@ from .views import (
     SubmissionListView,
     SubmissionCreateView,
     ClassSubmissionListView,
+    ExportClassSubmissionsView,
+    SubmissionApproveView,
 )
-
 
 urlpatterns = [
     path("", SubmissionListView.as_view(), name="submission-list"),
@@ -14,5 +15,16 @@ urlpatterns = [
         ClassSubmissionListView.as_view(),
         name="submission-class-list",
     ),
+    path(
+        "class/<int:class_id>/export/",
+        ExportClassSubmissionsView.as_view(),
+        name="submission-class-export",
+    ),
+    path(
+        "<int:submission_id>/approve/",
+        SubmissionApproveView.as_view(),
+        name="submission-approve",
+    ),
 ]
+
 

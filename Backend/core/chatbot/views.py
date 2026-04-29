@@ -1,472 +1,101 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-import google.genai as genai
-import os
-from django.conf import settings
-
-@api_view(['POST'])
-@permission_classes([AllowAny])  # Public endpoint for testing
-def test_chat_with_ai(request):
-    """
-    Public AI Chatbot endpoint for testing (no auth required)
-    """
-    try:
-        message = request.data.get('message', '')
-        
-        if not message.strip():
-            return Response(
-                {'error': 'Message cannot be empty'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Initialize Gemini
-        api_key = getattr(settings, 'GEMINI_API_KEY', None)
-        
-        if not api_key or api_key == 'your-gemini-api-key-here':
-            # Fallback to rule-based responses if Gemini is not configured
-            return Response({
-                'response': get_rule_based_response(message),
-                'fallback': True,
-                'mode': 'rule-based (no Gemini API key)'
-            })
-        
-        try:
-            # Configure Gemini with new package
-            client = genai.Client(api_key=api_key)
-            
-            # Prepare system prompt
-            system_prompt = """Bạn là trợ lý AI cho hệ thống thi trắc nghiệm trực tuyến. 
-            Nhiệm vụ của bạn là giúp đỡ học sinh và giáo viên về:
-            - Hướng dẫn làm bài thi
-            - Quản lý lớp học  
-            - Xem kết quả thi
-            - Các vấn đề kỹ thuật cơ bản
-            - Quy định thi cử
-            
-            Hãy trả lời một cách thân thiện, chuyên nghiệp và bằng tiếng Việt. 
-            Nếu không biết câu trả lời, hãy đề nghị người dùng liên hệ giáo viên.
-            
-            Hãy trả lời ngắn gọn, dễ hiểu và tập trung vào vấn đề người dùng hỏi."""
-            
-            # Combine system prompt and user message
-            full_prompt = f"{system_prompt}\n\nNgười dùng hỏi: {message}"
-            
-            # Get response from Gemini
-            response = client.models.generate_content(
-                model=getattr(settings, 'GEMINI_MODEL', 'gemini-1.5-flash'),
-                contents=full_prompt
-            )
-            
-            ai_response = response.text
-            
-            return Response({
-                'response': ai_response,
-                'fallback': False,
-                'mode': 'AI (Gemini)',
-                'api_key_status': 'configured'
-            })
-            
-        except Exception as gemini_error:
-            print(f"Gemini API error: {str(gemini_error)}")
-            # Fallback to rule-based responses on Gemini error
-            return Response({
-                'response': get_rule_based_response(message),
-                'fallback': True,
-                'mode': 'rule-based (Gemini error)',
-                'error': str(gemini_error)
-            })
-        
-    except Exception as e:
-        print(f"AI Chatbot error: {str(e)}")
-        # Fallback to rule-based responses on any error
-        return Response({
-            'response': get_rule_based_response(message),
-            'fallback': True,
-            'mode': 'rule-based (general error)',
-            'error': str(e)
-        })
+import re
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def chat_with_ai(request):
     """
-    AI Chatbot endpoint using OpenAI - Requires authentication
+    Endpoint Chatbot sử dụng Rule-based nâng cao.
     """
-    try:
-        message = request.data.get('message', '')
-        conversation_history = request.data.get('conversation_history', [])
-        
-        if not message.strip():
-            return Response(
-                {'error': 'Message cannot be empty'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Initialize OpenAI
-        api_key = getattr(settings, 'OPENAI_API_KEY', None)
-        
-        if not api_key or api_key == 'your-openai-api-key-here':
-            # Fallback to rule-based responses if OpenAI is not configured
-            return Response({
-                'response': get_rule_based_response(message),
-                'fallback': True
-            })
-        
-        try:
-            # Configure OpenAI
-            openai.api_key = api_key
-            
-            # Prepare system prompt
-            system_prompt = """Bạn là trợ lý AI cho hệ thống thi trắc nghiệm trực tuyến. 
-            Nhiệm vụ của bạn là giúp đỡ học sinh và giáo viên về:
-            - Hướng dẫn làm bài thi
-            - Quản lý lớp học  
-            - Xem kết quả thi
-            - Các vấn đề kỹ thuật cơ bản
-            - Quy định thi cử
-            
-            Hãy trả lời một cách thân thiện, chuyên nghiệp và bằng tiếng Việt. 
-            Nếu không biết câu trả lời, hãy đề nghị người dùng liên hệ giáo viên.
-            
-            Hãy trả lời ngắn gọn, dễ hiểu và tập trung vào vấn đề người dùng hỏi."""
-            
-            # Prepare messages with conversation history
-            messages = [
-                {"role": "system", "content": system_prompt}
-            ]
-            
-            # Add conversation history (limit to last 10 messages)
-            for msg in conversation_history[-10:]:
-                messages.append({
-                    "role": msg.get('role', 'user'),
-                    "content": msg.get('content', '')
-                })
-            
-            # Add current message
-            messages.append({"role": "user", "content": message})
-            
-            # Call OpenAI API
-            response = openai.ChatCompletion.create(
-                model=getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo'),
-                messages=messages,
-                max_tokens=getattr(settings, 'OPENAI_MAX_TOKENS', 500),
-                temperature=getattr(settings, 'OPENAI_TEMPERATURE', 0.7)
-            )
-            
-            ai_response = response.choices[0].message.content
-            
-            return Response({
-                'response': ai_response,
-                'fallback': False
-            })
-            
-        except Exception as openai_error:
-            print(f"OpenAI API error: {str(openai_error)}")
-            # Fallback to rule-based responses on OpenAI error
-            return Response({
-                'response': get_rule_based_response(message),
-                'fallback': True
-            })
-        
-    except Exception as e:
-        print(f"AI Chatbot error: {str(e)}")
-        # Fallback to rule-based responses on any error
-        return Response({
-            'response': get_rule_based_response(message),
-            'fallback': True
-        })
+    message = request.data.get('message', '').strip()
+    if not message:
+        return Response(
+            {'error': 'Tin nhắn không được để trống'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    response_text = get_rule_based_response(message)
+    
+    return Response({
+        'response': response_text,
+        'mode': 'Bot trợ giúp',
+        'fallback': True
+    })
 
 def get_rule_based_response(message):
     """
-    Enhanced rule-based responses when AI is not available
+    Hệ thống nhận diện ý định (Intent Mapping) - Ưu tiên cao nhất cho LIÊN HỆ.
     """
-    message_lower = message.lower()
+    msg = message.lower()
     
-    # Enhanced greeting with context
-    if any(keyword in message_lower for keyword in ['chào', 'hello', 'hi', 'xin chào']):
-        return '''Xin chào! 👋 
+    # --- 1. LIÊN HỆ BAN QUẢN TRỊ (ƯU TIÊN CAO NHẤT) ---
+    if any(k in msg for k in ['liên hệ', 'gmail', 'số điện thoại', 'sdt', 'admin', 'gặp admin']):
+        return ('📞 **Thông tin liên hệ Ban quản trị:**\n\n'
+                'Nếu bạn cần hỗ trợ trực tiếp hoặc giải quyết sự cố khẩn cấp, hãy liên hệ qua:\n'
+                '• **Gmail:** traluong210@gmail.com\n'
+                '• **Số điện thoại/Zalo:** 0904 487 600\n'
+                '• **Hỗ trợ:** Phục vụ nhiệt tình từ 8:00 đến 22:00.\n\n'
+                '*Chúng tôi luôn sẵn sàng đồng hành cùng bạn!*')
 
-Tôi là trợ lý AI thông minh của hệ thống thi trắc nghiệm trực tuyến. Tôi được thiết kế chuyên biệt để hỗ trợ:
+    # --- 2. HƯỚNG DẪN THI CỬ ---
+    if any(k in msg for k in ['cách thi', 'làm bài', 'bắt đầu thi', 'thi như thế nào', 'nộp bài']):
+        return ('📝 **Quy trình làm bài thi chuẩn:**\n\n'
+                '1. **Truy cập:** Chọn menu "Khóa Học" → Tìm đến lớp học của bạn.\n'
+                '2. **Chọn đề:** Danh sách bài thi sẽ hiển thị theo từng lớp. Click vào bài thi bạn muốn làm.\n'
+                '3. **Lưu ý:** Đọc kỹ thời gian làm bài và số câu hỏi trước khi nhấn "Bắt đầu".\n'
+                '4. **Làm bài:** Chọn đáp án cho từng câu. Hệ thống sẽ tự động lưu lại.\n'
+                '5. **Hoàn thành:** Nhấn nút "Nộp bài" ở cuối trang hoặc trên thanh công cụ.\n\n'
+                '**Lưu ý:** Nếu gặp sự cố mất mạng khi đang thi, hãy bình tĩnh tải lại trang (F5) để tiếp tục.')
 
-🎓 **Học sinh & Giáo viên** trong việc học tập và thi cử
-📚 **Hệ thống thi online** với đầy đủ tính năng hiện đại
-🔧 **Vấn đề kỹ thuật** một cách nhanh chóng
+    # --- 3. XEM KẾT QUẢ & ĐIỂM SỐ ---
+    if any(k in msg for k in ['điểm', 'kết quả', 'xem bài', 'đáp án', 'sai câu nào']):
+        return ('📊 **Hướng dẫn xem kết quả và đáp án:**\n\n'
+                '• **Xem nhanh:** Ngay sau khi nộp bài, hệ thống sẽ hiển thị điểm số của bạn.\n'
+                '• **Xem lại lịch sử:** Vào menu "Dashboard" để xem biểu đồ và danh sách các lần thi gần đây.\n'
+                '• **Xem chi tiết:** Vào trang lớp học → Tab "Bài nộp" → Nhấn vào bài thi đã làm để xem chi tiết câu đúng/sai và lời giải (nếu giáo viên cho phép).')
 
-Tôi có thể giúp bạn về:
-• Hướng dẫn làm bài thi chi tiết
-• Quản lý lớp học hiệu quả  
-• Xem kết quả và điểm số
-• Các vấn đề kỹ thuật cơ bản
-• Hỗ trợ 24/7 hoàn toàn miễn phí
+    # --- 4. VẤN ĐỀ LỚP HỌC ---
+    if any(k in msg for k in ['vào lớp', 'tìm lớp', 'không thấy lớp', 'thêm vào lớp']):
+        return ('🏫 **Vấn đề về Lớp học:**\n\n'
+                '• **Học sinh:** Bạn cần cung cấp tên đăng nhập cho Giáo viên để được thêm vào lớp. Khi đã vào lớp, bạn sẽ thấy lớp đó trong mục "Khóa Học".\n'
+                '• **Giáo viên:** Bạn có thể quản lý danh sách học sinh và tạo bài thi mới trong phần quản trị lớp học của mình.\n\n'
+                'Nếu bạn đã được thêm nhưng vẫn không thấy lớp, hãy thử đăng xuất và đăng nhập lại.')
 
-Bạn cần tôi giúp gì ngay bây giờ?'''
-    
-    # Enhanced exam instructions
-    elif any(keyword in message_lower for keyword in ['thi', 'bài thi', 'làm bài', 'exam']):
-        return '''📝 **Hướng dẫn làm bài thi chi tiết:**
+    # --- 5. TÀI KHOẢN & MẬT KHẨU ---
+    if any(k in msg for k in ['mật khẩu', 'password', 'đổi thông tin', 'quên mật khẩu', 'avata']):
+        return ('🔐 **Quản lý tài khoản:**\n\n'
+                '• **Quên mật khẩu:** Liên hệ trực tiếp với Giáo viên quản lý lớp để được cấp lại mật khẩu mới nhanh nhất.\n'
+                '• **Cập nhật thông tin:** Bạn có thể thay đổi họ tên, ảnh đại diện tại trang "Hồ sơ cá nhân".\n'
+                '• **Bảo mật:** Không chia sẻ tài khoản cho người khác để tránh mất dữ liệu thi cử.')
 
-**Bước 1: Truy cập bài thi**
-1. Đăng nhập vào hệ thống
-2. Vào mục "Khóa Học" trên thanh menu
-3. Chọn môn học bạn muốn thi
-4. Click vào bài thi cần làm
+    # --- 6. SỰ CỐ KỸ THUẬT ---
+    if any(k in msg for k in ['lỗi', 'không load được', 'đứng máy', 'lag', 'không ấn được']):
+        return ('🔧 **Cách khắc phục sự cố nhanh:**\n\n'
+                '1. **Tải lại trang:** Nhấn phím F5 hoặc biểu tượng Refresh trên trình duyệt.\n'
+                '2. **Kiểm tra Internet:** Đảm bảo kết nối mạng của bạn ổn định.\n'
+                '3. **Xóa Cache:** Nếu giao diện hiển thị sai, hãy thử xóa lịch sử duyệt web hoặc mở tab ẩn danh.\n'
+                '4. **Trình duyệt:** Khuyên dùng Google Chrome hoặc Microsoft Edge phiên bản mới nhất.\n\n'
+                'Nếu vẫn không được, hãy báo ngay cho Giáo viên hoặc Admin qua Gmail/SĐT.')
 
-**Bước 2: Bắt đầu làm bài**
-1. Đọc kỹ thông tin: thời gian, số câu hỏi, điểm
-2. Click "Bắt đầu làm bài"
-3. Hệ thống sẽ đếm ngược thời gian
+    # --- 7. CHÀO HỎI & GIỚI THIỆU ---
+    if any(k in msg for k in ['chào', 'hello', 'hi', 'xin chào', 'có đó không', 'hey']):
+        return ('Xin chào! 👋 Tôi là Robot hỗ trợ trực tuyến của hệ thống Thi Trắc Nghiệm.\n\n'
+                'Tôi có thể giúp bạn giải đáp nhanh các vấn đề về:\n'
+                '• **Liên hệ:** Thông tin Gmail/SĐT của Admin.\n'
+                '• **Thi cử:** Cách làm bài, nộp bài, thời gian thi.\n'
+                '• **Kết quả:** Xem điểm, xem đáp án.\n\n'
+                'Bạn đang gặp khó khăn ở phần nào?')
 
-**Bước 3: Làm bài thi**
-• Chọn đáp án A, B, C, D cho mỗi câu hỏi
-• Có thể thay đổi đáp án trước khi nộp bài
-• Theo dõi thời gian còn lại
+    # --- 8. CẢM ƠN & TẠM BIỆT ---
+    if any(k in msg for k in ['cảm ơn', 'thanks', 'thank you', 'ok', 'được rồi']):
+        return 'Dạ không có gì ạ! 😊 Chúc bạn có những giờ học tập và thi cử thật hiệu quả trên hệ thống. Cần gì cứ hỏi tôi nhé!'
 
-**Bước 4: Nộp bài**
-1. Kiểm tra lại tất cả câu trả lời
-2. Click "Nộp bài"
-3. Xem kết quả ngay lập tức
+    if any(k in msg for k in ['tạm biệt', 'bye', 'hẹn gặp lại', 'nghỉ đây']):
+        return 'Tạm biệt bạn! 👋 Chúc bạn một ngày tốt lành. Hy vọng sẽ sớm được hỗ trợ bạn lần sau!'
 
-⚠️ **Lưu ý quan trọng:**
-• Đọc kỹ hướng dẫn trước khi bắt đầu
-• Quản lý thời gian hợp lý
-• Chỉ được làm bài 1 lần (trừ khi được phép)
-
-Bạn cần giúp thêm về bước nào cụ thể?'''
-    
-    # Enhanced class management
-    elif any(keyword in message_lower for keyword in ['lớp', 'lớp học', 'class']):
-        return '''🏫 **Quản lý lớp học thông minh:**
-
-**👨‍🏫 Dành cho Giáo viên:**
-• Tạo lớp học mới cho từng môn
-• Thêm/xóa học sinh dễ dàng
-• Tạo và quản lý bài thi
-• Xem thống kê kết quả toàn lớp
-• Quản lý điểm số tập trung
-
-**👨‍🎓 Dành cho Học sinh:**
-• Xem thông tin chi tiết lớp học
-• Tham gia các bài thi được giao
-• Xem điểm số và kết quả
-• Theo dõi tiến độ học tập
-
-**🔗 Tính năng nổi bật:**
-• Giao diện trực quan, dễ sử dụng
-• Cập nhật kết quả real-time
-• Thông báo tự động khi có bài mới
-• Lưu trữ lịch sử thi cử
-
-Bạn đang là giáo viên hay học sinh? Tôi sẽ hướng dẫn chi tiết hơn!'''
-    
-    # Enhanced results viewing
-    elif any(keyword in message_lower for keyword in ['điểm', 'kết quả', 'score', 'result']):
-        return '''📊 **Xem kết quả thi chi tiết:**
-
-**👨‍🎓 Học sinh xem điểm:**
-1. Vào trang "Lớp học"
-2. Chọn tab "Bài nộp"
-3. Xem điểm của các bài đã làm
-4. Click vào chi tiết để xem:
-   • Điểm số từng câu
-   • Thời gian làm bài
-   • Đáp án đúng/sai
-   • Xếp hạng trong lớp
-
-**👨‍🏫 Giáo viên xem điểm:**
-1. Vào trang "Lớp học"
-2. Chọn tab "Bài nộp"
-3. Xem điểm của TẤT CẢ học sinh
-4. Thống kê chi tiết:
-   • Điểm trung bình lớp
-   • Phân phối điểm số
-   • Học sinh cần quan tâm
-   • Xu hướng học tập
-
-**📈 Thống kê nâng cao:**
-• Biểu đồ điểm số
-• So sánh giữa các lớp
-• Theo dõi tiến độ theo thời gian
-• Xuất báo cáo PDF
-
-Bạn muốn xem kết quả của môn học nào?'''
-    
-    # Enhanced help menu
-    elif any(keyword in message_lower for keyword in ['help', 'giúp', 'hỗ trợ', 'support']):
-        return '''🤖 **Tôi có thể giúp bạn những gì?**
-
-📚 **HỌC TẬP & THI CỬ:**
-• Hướng dẫn làm bài thi A-Z
-• Chiến lược làm bài hiệu quả
-• Xem và phân tích kết quả
-• Các quy định thi cử quan trọng
-• Mẹo học tập thông minh
-
-🏫 **QUẢN LÝ LỚP HỌC:**
-• Tạo và quản lý lớp học
-• Thêm học sinh vào lớp
-• Tạo bài thi customized
-• Thống kê và báo cáo
-• Giao tiếp với học sinh
-
-🔧 **KỸ THUẬT & HỖ TRỢ:**
-• Các vấn đề đăng nhập
-• Sử dụng hệ thống hiệu quả
-• Báo cáo lỗi và sự cố
-• Tối ưu hóa trải nghiệm
-• Hướng dẫn trên mobile
-
-💡 **TƯ VẤN HỌC TẬP:**
-• Lựa chọn môn học phù hợp
-• Lộ trình học tập cá nhân
-• Phương pháp học online
-• Quản lý thời gian học
-• Ôn tập hiệu quả
-
-🎯 **ĐỀ XUẤT CÂU HỎI:**
-• "Hướng dẫn làm bài thi toán"
-• "Cách tạo lớp học mới"
-• "Xem điểm môn văn"
-• "Lỗi không đăng nhập được"
-• "Học online hiệu quả"
-
-Bạn cần hỗ trợ về mảng nào? Tôi sẽ giải thích chi tiết!'''
-    
-    # Enhanced login help
-    elif any(keyword in message_lower for keyword in ['login', 'đăng nhập', 'tài khoản', 'account']):
-        return '''🔐 **Hướng dẫn đăng nhập & quản lý tài khoản:**
-
-**📝 Đăng nhập hệ thống:**
-1. Truy cập trang chủ
-2. Nhập username (do giáo viên cung cấp)
-3. Nhập password
-4. Click "Đăng nhập"
-
-**🔑 Quên mật khẩu:**
-• Liên hệ ngay giáo viên của bạn
-• Giáo viên sẽ reset mật khẩu mới
-• Không thể tự reset (bảo mật)
-
-**👤 Tạo tài khoản mới:**
-• Chỉ giáo viên mới có quyền tạo
-• Học sinh sẽ nhận tài khoản từ giáo viên
-• Tài khoản bao gồm: username + password
-
-**⚠️ Các lỗi thường gặp:**
-• Sai username/password: Kiểm tra lại ký tự
-• Không đăng nhập được: Xóa cache trình duyệt
-• Tài khoản bị khóa: Liên hệ giáo viên
-• Quên thông tin: Hỏi giáo viên lớp học
-
-**🛡️ Bảo mật tài khoản:**
-• Không chia sẻ tài khoản cho người khác
-• Đổi mật khẩu định kỳ (nếu được phép)
-• Luôn đăng xuất sau khi sử dụng
-
-Bạn đang gặp vấn đề gì cụ thể về tài khoản?'''
-    
-    # Enhanced technical support
-    elif any(keyword in message_lower for keyword in ['lỗi', 'error', 'vấn đề', 'problem']):
-        return '''🔧 **Giải quyết các vấn đề kỹ thuật:**
-
-**🌐 Các lỗi kết nối:**
-1. **Trang không tải được**
-   • Kiểm tra kết nối internet
-   • Thử refresh trang (F5)
-   • Đổi trình duyệt (Chrome, Firefox)
-   
-2. **Đăng nhập thất bại**
-   • Kiểm tra username/password
-   • Xóa cache và cookies
-   • Thử trang ẩn danh
-
-**📱 Lỗi trên Mobile:**
-• Cập nhật app phiên bản mới nhất
-• Kiểm tra kết nối WiFi/4G
-• Xóa cache ứng dụng
-• Cài đặt lại app
-
-**💻 Lỗi trên Desktop:**
-• Cập nhật trình duyệt
-• Tắt các tiện ích mở rộng
-• Kiểm tra JavaScript bật
-• Xóa dữ liệu duyệt web
-
-**🚨 Khi nào cần liên hệ hỗ trợ:**
-• Lỗi kéo dài > 5 phút
-• Nhiều người cùng gặp lỗi
-• Mất dữ liệu quan trọng
-• Không thể truy cập hệ thống
-
-**📞 Kênh hỗ trợ:**
-• Giáo viên của bạn (nhanh nhất)
-• Admin hệ thống
-• Email hỗ trợ kỹ thuật
-
-Bạn đang gặp lỗi cụ thể nào? Mô tả chi tiết để tôi giúp đỡ!'''
-    
-    # Enhanced free info
-    elif any(keyword in message_lower for keyword in ['miễn phí', 'free', 'giá', 'cost']):
-        return '''🎉 **Tôi hoàn toàn MIỄN PHÍ!**
-
-✨ **Các tính năng miễn phí:**
-• Trả lời không giới hạn câu hỏi
-• Hỗ trợ 24/7 mọi lúc mọi nơi
-• Tư vấn học tập cá nhân hóa
-• Giải quyết vấn đề kỹ thuật
-• Hướng dẫn sử dụng hệ thống
-
-🤖 **Công nghệ AI thông minh:**
-• Hiểu ngữ cảnh tự nhiên
-• Phản hồi nhanh chóng
-• Học hỏi từ tương tác
-• Luôn cập nhật kiến thức mới
-
-🎓 **Đặc biệt cho giáo dục:**
-• Chuyên biệt cho hệ thống thi cử
-• Hiểu biết về các môn học
-• Hỗ trợ cả giáo viên và học sinh
-• Tư vấn phương pháp học tập
-
-💡 **So với các dịch vụ khác:**
-• Không cần đăng ký tài khoản
-• Không giới hạn thời gian sử dụng
-• Không có quảng cáo phiền nhiễu
-• Không yêu cầu thông tin cá nhân
-
-🚀 **Cách sử dụng:**
-• Gõ câu hỏi vào ô chat
-• Nhấn Enter hoặc click gửi
-• Nhận câu trả lời ngay lập tức
-
-Bạn có thể hỏi tôi BẤT CỨ điều gì về học tập và thi cử!'''
-    
-    # Default enhanced response
-    else:
-        return '''🤔 **Tôi hiểu câu hỏi của bạn!**
-
-Để giúp bạn tốt nhất, tôi có một vài gợi ý:
-
-🎯 **Cách đặt câu hỏi hiệu quả:**
-• Cụ thể và rõ ràng: "Làm bài thi toán thế nào?"
-• Cung cấp context: "Tôi là học sinh lớp 10, muốn xem điểm"
-• Sử dụng từ khóa: "thi", "lớp", "điểm", "help"
-
-💡 **Các chủ đề tôi hỗ trợ:**
-📚 Học tập & Thi cử
-🏫 Quản lý lớp học  
-📊 Kết quả & Điểm số
-🔧 Vấn đề kỹ thuật
-🎓 Tư vấn học tập
-
-🔍 **Thử các câu hỏi mẫu:**
-• "Hướng dẫn làm bài thi"
-• "Cách tạo lớp học mới"
-• "Xem điểm môn Anh văn"
-• "Lỗi không đăng nhập được"
-• "Học online hiệu quả"
-
-Hoặc bạn có thể mô tả chi tiết vấn đề đang gặp phải. Tôi luôn sẵn sàng giúp đỡ! 💪
-
-Bạn cần hỗ trợ gì cụ thể?'''
+    # --- 9. MẶC ĐỊNH ---
+    return ('🤖 **Tôi chưa hiểu ý bạn lắm.**\n\n'
+            'Thử hỏi về: "làm bài thi", "xem kết quả", "liên hệ admin", "quên mật khẩu"... để tôi hỗ trợ nhanh nhất nhé!')

@@ -1,5 +1,10 @@
 from django.urls import path
-from .views import RegisterView, MeView, get_profile, update_profile, upload_avatar, change_password, test_update_profile
+from .views import (
+    RegisterView, MeView, get_profile, update_profile, 
+    upload_avatar, change_password, test_update_profile,
+    forgot_password, reset_password,
+    UserListCreateView, UserDetailAdminView,
+)
 
 urlpatterns = [
     path('register/', RegisterView.as_view()),
@@ -9,6 +14,9 @@ urlpatterns = [
     path('profile/test-update/', test_update_profile),
     path('profile/upload-avatar/', upload_avatar),
     path('profile/change-password/', change_password),
-    # User management endpoints (for admin/teacher)
-    path('users/', MeView.as_view()),  # Temporary - will be updated later
+    path('forgot-password/', forgot_password),
+    path('reset-password/', reset_password),
+    # Admin: Quản lý người dùng
+    path('users/', UserListCreateView.as_view(), name='admin-user-list'),
+    path('users/<int:pk>/', UserDetailAdminView.as_view(), name='admin-user-detail'),
 ]

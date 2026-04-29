@@ -31,6 +31,8 @@ class SubmissionWithUserExamSerializer(serializers.ModelSerializer):
             "student_username",
             "student_full_name",
             "score",
+            "status",
+            "teacher_note",
             "submitted_at",
             "is_passed",
         )
@@ -50,3 +52,10 @@ class SubmissionWithUserExamSerializer(serializers.ModelSerializer):
 class SubmissionCreateSerializer(serializers.Serializer):
     exam = serializers.IntegerField()
     answers = serializers.DictField(child=serializers.CharField())
+
+
+class SubmissionApproveSerializer(serializers.ModelSerializer):
+    """Dùng cho teacher/admin phê duyệt hoặc điều chỉnh kết quả"""
+    class Meta:
+        model = Submission
+        fields = ('status', 'score', 'teacher_note')

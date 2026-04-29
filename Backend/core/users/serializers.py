@@ -9,7 +9,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'role')
+        fields = ('username', 'email', 'password', 'role', 'first_name', 'last_name')
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -17,6 +17,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data.get('email', ''),
             password=validated_data['password'],
             role=validated_data.get('role', 'student'),
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
         )
         return user
 
@@ -57,3 +59,17 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'avatar', 'created_at'
         ]
         read_only_fields = fields
+
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    """Serializer cho Admin quản lý người dùng (full CRUD)"""
+    full_name = serializers.ReadOnlyField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 'full_name',
+            'role', 'phone', 'address', 'date_of_birth',
+            'avatar', 'created_at', 'is_active'
+        ]
+        read_only_fields = ['id', 'username', 'created_at']

@@ -49,3 +49,16 @@ class User(AbstractUser):
     
     def __str__(self):
         return f"{self.display_name} ({self.username})"
+
+class PasswordResetCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reset_codes')
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+
+    def is_valid(self):
+        # Mặc định code có hiệu lực trong 10 phút (600 giây)
+        return not self.is_used and (timezone.now() - self.created_at).total_seconds() < 600
+
+    def __str__(self):
+        return f"Reset code for {self.user.username} - {self.code}"
