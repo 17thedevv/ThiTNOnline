@@ -77,12 +77,15 @@
 }
 
 @keyframes pulse {
-  0%, 100% { 
-    transform: scale(1); 
+
+  0%,
+  100% {
+    transform: scale(1);
     opacity: 1;
   }
-  50% { 
-    transform: scale(1.1); 
+
+  50% {
+    transform: scale(1.1);
     opacity: 0.8;
   }
 }
@@ -106,6 +109,7 @@
     opacity: 0;
     transform: translateY(-20px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -195,13 +199,11 @@
 }
 
 .dropdown div:first-child:hover::before {
-  content: '👤';
   position: absolute;
   left: 20px;
 }
 
 .dropdown div:last-child:hover::before {
-  content: '🚪';
   position: absolute;
   left: 20px;
 }
@@ -213,43 +215,43 @@
     padding: 0 16px;
     gap: 16px;
   }
-  
+
   .notify-btn {
     font-size: 18px;
     padding: 8px;
     min-width: 40px;
     min-height: 40px;
   }
-  
+
   .notify-count {
     font-size: 10px;
     padding: 2px 6px;
   }
-  
+
   .notify-dropdown {
     width: 300px;
     top: 50px;
   }
-  
+
   .profile {
     padding: 6px 12px;
     gap: 8px;
   }
-  
+
   .profile img {
     width: 32px;
     height: 32px;
   }
-  
+
   .profile span {
     font-size: 14px;
   }
-  
+
   .dropdown {
     top: 50px;
     min-width: 160px;
   }
-  
+
   .dropdown div {
     padding: 12px 16px;
     font-size: 14px;
@@ -262,32 +264,32 @@
     background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
     border-bottom-color: #374151;
   }
-  
+
   .notify-btn {
     background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
     border-color: #4b5563;
     color: #d1d5db;
   }
-  
+
   .notify-btn:hover {
     background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
     border-color: #3b82f6;
   }
-  
+
   .profile {
     background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
     border-color: #4b5563;
   }
-  
+
   .profile span {
     color: #d1d5db;
   }
-  
+
   .dropdown {
     background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
     border-color: #374151;
   }
-  
+
   .dropdown div {
     color: #d1d5db;
     border-bottom-color: #374151;

@@ -8,7 +8,7 @@ const Chatbot = () => {
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: 'Xin chào! Tôi là trợ lý của hệ thống. Tôi có thể giúp gì cho bạn về việc học tập và làm bài thi?',
+      text: 'Xin chào! Tôi là Robot hỗ trợ tự động của hệ thống. Nhập từ khóa bất kỳ để tôi giúp bạn nhanh chóng nhé!',
       sender: 'bot',
       timestamp: new Date()
     }
@@ -16,44 +16,10 @@ const Chatbot = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(false); // Default to false and we will remove usage
   const messagesEndRef = useRef(null);
 
-  // Sound effects
-  const playSound = (soundType) => {
-    if (!soundEnabled) return;
-    
-    // Create audio context for sound effects
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    switch(soundType) {
-      case 'send':
-        oscillator.frequency.value = 800;
-        gainNode.gain.value = 0.1;
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.1);
-        break;
-      case 'receive':
-        oscillator.frequency.value = 600;
-        gainNode.gain.value = 0.1;
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.15);
-        break;
-      case 'click':
-        oscillator.frequency.value = 1000;
-        gainNode.gain.value = 0.05;
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.05);
-        break;
-      default:
-        break;
-    }
-  };
+  // Sound effects removed
 
   // Quick replies for common questions
   const quickReplies = [
@@ -75,7 +41,7 @@ const Chatbot = () => {
   const handleSendMessage = async (messageText = inputMessage) => {
     if (!messageText.trim()) return;
 
-    playSound('send'); // Play send sound
+    // Handle send message
 
     const userMessage = {
       id: Date.now(),
@@ -90,41 +56,43 @@ const Chatbot = () => {
     setIsTyping(true);
 
     try {
-      // Get user context for personalized responses
-      const userContext = chatbotService.getUserContext();
-      
-      // Use rule-based responses only (context-aware)
-      const response = chatbotService.getFallbackResponse(messageText);
+      // Get conversation history (excluding the message we just added)
+      const history = messages.slice(1).map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'model',
+        content: msg.text
+      }));
 
+      // Call real AI API
+      const data = await chatbotService.sendMessage(messageText, history);
+      
       const botMessage = {
         id: Date.now() + 1,
-        text: response,
+        text: data.response || 'Xin lỗi, tôi không nhận được phản hồi.',
         sender: 'bot',
-        timestamp: new Date()
+        timestamp: new Date(),
+        mode: data.mode // Store mode for debugging if needed
       };
       
       setMessages(prev => [...prev, botMessage]);
-      playSound('receive'); // Play receive sound
     } catch (error) {
       console.error('Error sending message:', error);
       
-      // Show error message
+      // Fallback if API fails completely
+      const fallbackText = chatbotService.getFallbackResponse(messageText);
       const errorMessage = {
         id: Date.now() + 1,
-        text: 'Xin lỗi, tôi đang gặp sự cố kỹ thuật. Vui lòng thử lại sau hoặc liên hệ giáo viên.',
+        text: fallbackText,
         sender: 'bot',
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, errorMessage]);
-      playSound('receive'); // Play receive sound for error too
     } finally {
       setIsTyping(false);
     }
   };
 
   const handleQuickReply = (reply) => {
-    playSound('click'); // Play click sound
     handleSendMessage(reply.action);
   };
 
@@ -168,16 +136,9 @@ const Chatbot = () => {
       <div className="chatbot-header">
         <div className="chatbot-title">
           <FaRobot />
-          <span>Trợ lý Hỗ Trợ</span>
+          <span>Trợ lý Hỗ trợ</span>
         </div>
         <div className="chatbot-controls">
-          <button 
-            className="control-button"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
-          >
-            {soundEnabled ? <FaVolumeUp /> : <FaVolumeMute />}
-          </button>
           <button 
             className="control-button"
             onClick={clearChat}
@@ -204,8 +165,13 @@ const Chatbot = () => {
               <div className="message-avatar">
                 {message.sender === 'user' ? <FaUser /> : <FaRobot />}
               </div>
-              <div className="message-text">
-                {message.text}
+              <div className="message-text-container">
+                <div className="message-sender-name">
+                  {message.sender === 'user' ? 'Bạn' : 'Trợ lý Hỗ trợ'}
+                </div>
+                <div className="message-text">
+                  {message.text}
+                </div>
               </div>
             </div>
             <div className="message-time">
@@ -270,7 +236,7 @@ const Chatbot = () => {
         </div>
         <div className="chatbot-footer">
           <span className="mode-indicator">
-            🤖 Trợ lý thông minh
+            🤖 Trợ lý tự động
           </span>
         </div>
       </div>

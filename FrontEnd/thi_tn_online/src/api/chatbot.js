@@ -2,12 +2,8 @@
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 class ChatbotService {
-  // Method to send message to AI
   async sendMessage(message, conversationHistory = [], userContext = {}) {
     try {
-      // Enhanced prompt with user context
-      const enhancedMessage = this.enhanceMessageWithContext(message, userContext);
-      
       const response = await fetch(`${API_BASE_URL}/api/chatbot/chat/`, {
         method: 'POST',
         headers: {
@@ -15,211 +11,123 @@ class ChatbotService {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
-          message: enhancedMessage,
+          message: message,
           conversation_history: conversationHistory,
           user_context: userContext
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
-
-      const data = await response.json();
-      return data;
+      if (!response.ok) throw new Error('Failed to send message');
+      return await response.json();
     } catch (error) {
       console.error('Chatbot service error:', error);
       throw error;
     }
   }
 
-  // Enhance message with user context
-  enhanceMessageWithContext(message, userContext) {
-    const { role, name, recentActivity, preferences } = userContext;
-    
-    let contextInfo = '';
-    
-    if (role) {
-      contextInfo += `Người dùng là ${role === 'teacher' ? 'giáo viên' : 'học sinh'}. `;
-    }
-    
-    if (name) {
-      contextInfo += `Tên: ${name}. `;
-    }
-    
-    if (recentActivity) {
-      contextInfo += `Hoạt động gần đây: ${recentActivity}. `;
-    }
-    
-    if (preferences) {
-      contextInfo += `Sở thích: ${preferences}. `;
-    }
-    
-    return contextInfo ? `${contextInfo}\n\nCâu hỏi: ${message}` : message;
-  }
-
-  // Get user context from localStorage and current page
   getUserContext() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const currentPath = window.location.pathname;
     
-    let recentActivity = '';
-    if (currentPath.includes('/dashboard')) {
-      recentActivity = 'đang xem trang tổng quan';
-    } else if (currentPath.includes('/exam/')) {
-      recentActivity = 'đang làm bài thi';
-    } else if (currentPath.includes('/classes')) {
-      recentActivity = 'đang xem lớp học';
-    } else if (currentPath.includes('/profile')) {
-      recentActivity = 'đang xem hồ sơ';
-    }
-    
     return {
-      role: user.role,
-      name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
-      recentActivity,
-      preferences: this.getUserPreferences(),
+      role: user.role || 'guest',
+      name: `${user.last_name || ''} ${user.first_name || ''}`.trim() || user.username || 'bạn',
       currentPage: currentPath
     };
   }
 
-  // Get user preferences from localStorage
-  getUserPreferences() {
-    try {
-      return JSON.parse(localStorage.getItem('userPreferences') || '{}');
-    } catch {
-      return {};
-    }
-  }
-
-  // Fallback to rule-based responses when AI is not available
   getFallbackResponse(message) {
-    const input = message.toLowerCase();
-    const userContext = this.getUserContext();
+    const input = message.toLowerCase().trim();
+    const context = this.getUserContext();
     
-    // Enhanced pattern matching
-    const patterns = {
-      // Greetings
-      greeting: ['chào', 'hello', 'hi', 'xin chào', 'halo'],
-      
-      // Exam related
-      exam: ['thi', 'bài thi', 'làm bài', 'kiểm tra', 'exam', 'test'],
-      createExam: ['tạo bài', 'tạo bài thi', 'tạo đề thi', 'new exam'],
-      examResult: ['kết quả thi', 'điểm thi', 'xem điểm', 'score', 'result'],
-      
-      // Class related
-      class: ['lớp', 'lớp học', 'class', 'khóa học', 'course'],
-      
-      // Help and support
-      help: ['help', 'giúp', 'hỗ trợ', 'hướng dẫn', 'support', 'guide'],
-      
-      // Account related
-      account: ['login', 'đăng nhập', 'tài khoản', 'account', 'password', 'mật khẩu'],
-      
-      // Technical issues
-      error: ['lỗi', 'error', 'vấn đề', 'problem', 'sự cố', 'issue'],
-      
-      // Navigation
-      navigation: ['đi đến', 'vào', 'mở', 'truy cập', 'navigate', 'access'],
-      
-      // Time and schedule
-      time: ['thời gian', 'time', 'lịch', 'schedule', 'khi nào', 'when'],
-      
-      // Difficulty level
-      difficulty: ['khó', 'dễ', 'difficulty', 'level', 'cấp độ'],
-      
-      // General questions
-      what: ['cái gì', 'what is', 'là gì', 'what'],
-      how: ['làm thế nào', 'how to', 'như thế nào', 'how'],
-      where: ['ở đâu', 'where', 'đâu'],
-      when: ['khi nào', 'when'],
-      why: ['tại sao', 'why'],
-      
-      // Common phrases
-      thanks: ['cảm ơn', 'thank', 'thanks'],
-      bye: ['tạm biệt', 'bye', 'goodbye'],
-      ok: ['ok', 'được', 'tốt', 'good']
-    };
-    
-    // Check which pattern matches
-    let matchedPattern = null;
-    for (const [pattern, keywords] of Object.entries(patterns)) {
-      if (keywords.some(keyword => input.includes(keyword))) {
-        matchedPattern = pattern;
-        break;
-      }
+    // --- 1. NHẬN DIỆN LIÊN HỆ (ĐƯA LÊN ĐẦU ĐỂ ƯU TIÊN CAO NHẤT) ---
+    if (/(liên hệ|gmail|sdt|số điện thoại|fb|zalo|admin|gặp admin|trợ giúp trực tiếp)/i.test(input)) {
+        return `📞 **Thông tin liên hệ Ban quản trị:**
+
+Nếu bạn cần hỗ trợ trực tiếp từ Admin, hãy liên hệ qua:
+• **Gmail:** traluong210@gmail.com
+• **Số điện thoại/Zalo:** 0904 487 600
+• **Hỗ trợ:** Từ 8:00 - 22:00 hàng ngày.
+
+*Chúng tôi luôn sẵn sàng hỗ trợ bạn!*`;
     }
-    
-    // Personalized responses based on user role and pattern
-    if (userContext.role === 'teacher') {
-      if (matchedPattern === 'greeting') {
-        return `Xin chào ${userContext.name || 'giáo viên'}! Tôi là trợ lý hỗ trợ. Tôi có thể giúp bạn về:\n• Tạo và quản lý bài thi\n• Xem kết quả học sinh\n• Quản lý lớp học\n• Hướng dẫn sử dụng hệ thống\n\nBạn cần giúp gì cụ thể không?`;
-      } else if (matchedPattern === 'createExam') {
-        return 'Để tạo bài thi mới:\n1. Vào mục "Khóa Học"\n2. Chọn lớp học muốn tạo bài thi\n3. Click "Tạo bài thi mới"\n4. Điền thông tin bài thi (tiêu đề, thời gian, môn học)\n5. Thêm câu hỏi và đáp án\n6. Lưu và xuất bản\n\nBạn muốn hướng dẫn chi tiết hơn về bước nào không?';
-      } else if (matchedPattern === 'exam') {
-        return 'Về bài thi:\n• Tạo bài thi: Khóa Học → Chọn lớp → Tạo bài thi mới\n• Quản lý bài thi: Xem, sửa, xóa bài thi đã tạo\n• Xem bài nộp: Kiểm tra kết quả học sinh\n• Thống kê: Xem báo cáo và phân tích\n\nBạn cần giúp gì về quản lý bài thi?';
-      } else if (matchedPattern === 'examResult') {
-        return 'Để xem kết quả học sinh:\n1. Vào trang Lớp học\n2. Chọn tab "Bài nộp"\n3. Xem điểm và thống kê của tất cả học sinh\n4. Có thể xuất báo cáo Excel\n\nBạn cũng có thể xem thống kê tổng quan trong Dashboard.';
-      } else if (matchedPattern === 'class') {
-        return 'Về quản lý lớp học:\n• Tạo lớp: Khóa Học → Tạo lớp mới\n• Thêm học sinh: Lớp học → Thêm học sinh\n• Xem bài nộp: Kiểm tra tiến độ\n• Quản lý: Cài đặt, thống kê\n\nBạn đang muốn làm gì với lớp học?';
-      } else if (matchedPattern === 'help') {
-        return `Chào ${userContext.name || 'giáo viên'}! Tôi có thể giúp bạn về:\n\n📚 **Quản lý học tập:**\n• Tạo và quản lý bài thi\n• Xem kết quả và thống kê học sinh\n• Quản lý lớp học và học sinh\n• Xuất báo cáo\n\n🔧 **Kỹ thuật:**\n• Hướng dẫn sử dụng hệ thống\n• Báo cáo lỗi và sự cố\n• Quản lý tài khoản\n\nBạn cần giúp đỡ về vấn đề gì cụ thể?`;
-      } else if (matchedPattern === 'account') {
-        return 'Về tài khoản giáo viên:\n• Đăng nhập: Sử dụng username và password\n• Quên mật khẩu: Liên hệ admin để reset\n• Thay đổi thông tin: Vào trang Profile\n• Cài đặt: Tùy chỉnh thông tin cá nhân\n\nBạn gặp vấn đề gì về tài khoản?';
-      } else if (matchedPattern === 'error') {
-        return 'Nếu bạn gặp lỗi:\n1. F5 tải lại trang\n2. Kiểm tra kết nối internet\n3. Xóa cache trình duyệt (Ctrl+Shift+Delete)\n4. Đăng nhập lại\n5. Liên hệ admin nếu vẫn không được\n\nBạn đang gặp lỗi gì? Có thể mô tả chi tiết hơn không?';
-      } else if (matchedPattern === 'navigation') {
-        const currentPage = userContext.currentPage;
-        return `Bạn đang ở trang: ${currentPage}\n\nCác trang chính:\n• Dashboard: Trang tổng quan\n• Khóa Học: Quản lý lớp và bài thi\n• Lớp học: Chi tiết lớp học\n• Profile: Thông tin cá nhân\n\nBạn muốn đi đến trang nào?`;
-      } else if (matchedPattern === 'thanks') {
-        return `Rất vui được giúp ${userContext.name || 'bạn'}! Nếu có câu hỏi nào khác, đừng ngần ngại hỏi nhé.`;
-      } else if (matchedPattern === 'bye') {
-        return `Chào tạm biệt ${userContext.name || 'giáo viên'}! Chúc bạn một ngày làm việc hiệu quả!`;
-      }
-    } else if (userContext.role === 'student') {
-      if (matchedPattern === 'greeting') {
-        return `Xin chào ${userContext.name || 'bạn'}! Tôi là trợ lý học tập. Tôi có thể giúp bạn:\n• Làm bài thi và xem kết quả\n• Xem lịch học và bài tập\n• Hướng dẫn sử dụng hệ thống\n• Giải đáp thắc mắc học tập\n\nBạn cần giúp gì hôm nay?`;
-      } else if (matchedPattern === 'exam') {
-        return 'Để làm bài thi:\n1. Vào mục "Khóa Học"\n2. Chọn bài thi muốn làm\n3. Click "Bắt đầu làm bài"\n4. Đọc kỹ hướng dẫn và thời gian\n5. Trả lời các câu hỏi\n6. Kiểm tra lại và nộp bài\n\nChúc bạn làm bài tốt!';
-      } else if (matchedPattern === 'examResult') {
-        return 'Để xem điểm thi của bạn:\n1. Vào trang Dashboard\n2. Xem mục "Kết quả thi gần đây"\n3. Hoặc vào trang Lớp học → tab "Bài nộp"\n\nBạn có thể xem chi tiết điểm, số câu đúng và tỷ lệ phần trăm.';
-      } else if (matchedPattern === 'class') {
-        return 'Về lớp học của bạn:\n• Xem thông tin: Lớp học → Chi tiết lớp\n• Làm bài thi: Khóa Học → Chọn bài thi\n• Xem điểm: Dashboard hoặc Lớp học\n• Lịch học: Xem trong trang Lớp học\n\nBạn muốn biết thêm về tính năng nào?';
-      } else if (matchedPattern === 'help') {
-        return `Chào ${userContext.name || 'bạn'}! Tôi có thể giúp bạn về:\n\n📚 **Học tập:**\n• Làm bài thi và xem kết quả\n• Xem lịch học và bài tập\n• Theo dõi tiến độ học tập\n\n🔧 **Kỹ thuật:**\n• Hướng dẫn sử dụng hệ thống\n• Báo cáo lỗi và sự cố\n• Quản lý tài khoản\n\nBạn cần giúp đỡ về vấn đề gì cụ thể?`;
-      } else if (matchedPattern === 'account') {
-        return 'Về tài khoản học sinh:\n• Đăng nhập: Sử dụng username và password từ giáo viên\n• Quên mật khẩu: Liên hệ giáo viên để reset\n• Thay đổi thông tin: Vào trang Profile\n• Avatar: Cập nhật ảnh đại diện\n\nBạn gặp vấn đề gì về tài khoản?';
-      } else if (matchedPattern === 'error') {
-        return 'Nếu bạn gặp lỗi:\n1. F5 tải lại trang\n2. Kiểm tra kết nối internet\n3. Xóa cache trình duyệt (Ctrl+Shift+Delete)\n4. Đăng nhập lại\n5. Liên hệ giáo viên nếu vẫn không được\n\nBạn đang gặp lỗi gì? Có thể mô tả chi tiết hơn không?';
-      } else if (matchedPattern === 'navigation') {
-        const currentPage = userContext.currentPage;
-        return `Bạn đang ở trang: ${currentPage}\n\nCác trang chính:\n• Dashboard: Trang tổng quan và kết quả\n• Khóa Học: Danh sách lớp và bài thi\n• Lớp học: Chi tiết lớp học\n• Profile: Thông tin cá nhân\n\nBạn muốn đi đến trang nào?`;
-      } else if (matchedPattern === 'thanks') {
-        return `Không có gì ${userContext.name || 'bạn'}! Học tốt nhé! Nếu cần giúp gì thêm, cứ hỏi tôi.`;
-      } else if (matchedPattern === 'bye') {
-        return `Chào tạm biệt ${userContext.name || 'bạn'}! Chúc bạn học tập tốt và đạt kết quả cao!`;
-      }
+
+    // --- 2. NHẬN DIỆN Ý ĐỊNH LÀM BÀI THI ---
+    if (/\b(thi|làm bài|vào thi|bắt đầu|cách thi|exam|test|nộp bài)\b/i.test(input)) {
+        return `📝 **Hướng dẫn làm bài thi chi tiết:**
+
+**Bước 1:** Click vào menu **"Khóa Học"** phía trên thanh điều hướng.
+**Bước 2:** Tìm và chọn đúng **Lớp học** bạn đang theo học.
+**Bước 3:** Hệ thống sẽ hiện danh sách bài thi. Click vào bài thi bạn muốn làm.
+**Bước 4:** Đọc kỹ thời gian và quy định, sau đó nhấn **"Bắt đầu làm bài"**.
+**Bước 5:** Sau khi chọn xong đáp án, đừng quên nhấn nút **"Nộp bài"** ở cuối trang nhé!
+
+*Chúc bạn hoàn thành bài thi thật tốt!*`;
     }
-    
-    // General responses for all users
-    if (matchedPattern === 'what') {
-      return 'Để tôi hiểu rõ hơn, bạn có thể cho biết:\n• Bạn đang hỏi về tính năng nào?\n• Bạn đang gặp vấn đề gì?\n• Bạn cần hướng dẫn về điều gì?\n\nCố gắng mô tả chi tiết hơn để tôi giúp bạn tốt hơn nhé!';
-    } else if (matchedPattern === 'how') {
-      return 'Để hướng dẫn bạn tốt nhất, tôi cần biết:\n• Bạn muốn làm gì cụ thể?\n• Bạn đang ở trang nào?\n• Bạn đã thử cách nào chưa?\n\nHãy mô tả chi tiết hơn về việc bạn cần làm!';
-    } else if (matchedPattern === 'time') {
-      return 'Về thời gian:\n• Thời gian làm bài: Được hiển thị trong mỗi bài thi\n• Lịch học: Xem trong trang Lớp học\n• Hạn nộp bài: Kiểm tra trong từng bài thi\n\nBạn cần thông tin thời gian về việc gì cụ thể?';
-    } else if (matchedPattern === 'difficulty') {
-      return 'Về độ khó:\n• Các bài thi có độ khó khác nhau\n• Xem mô tả trong từng bài thi\n• Giáo viên có thể tùy chỉnh độ khó\n\nBạn cảm thấy bài thi nào quá khó hoặc quá dễ?';
-    } else if (matchedPattern === 'thanks') {
-      return 'Rất vui được giúp bạn! Nếu có câu hỏi nào khác, đừng ngần ngại hỏi nhé.';
-    } else if (matchedPattern === 'bye') {
-      return 'Chào tạm biệt! Chúc bạn một ngày tốt lành!';
-    } else if (matchedPattern === 'ok') {
-      return 'Tuyệt vời! Bạn còn cần giúp gì thêm không?';
+
+    // --- 3. NHẬN DIỆN CHÀO HỎI (LOẠI BỎ TỪ "VỚI" GÂY NHẦM LẪN) ---
+    if (/\b(chào|hello|hi|xin chào|hey|tư vấn|giúp)\b/i.test(input)) {
+        return `Xin chào ${context.name}! 👋 Tôi là Robot hỗ trợ tự động của hệ thống Thi Trắc Nghiệm.
+        
+Tôi có thể giúp bạn giải đáp cực nhanh các vấn đề về:
+• **Làm bài thi:** Cách vào thi, nộp bài.
+• **Kết quả:** Xem điểm, xem lại bài làm.
+• **Lớp học:** Cách tham gia lớp, liên hệ giáo viên.
+• **Tài khoản:** Đăng nhập, mật khẩu.
+
+Bạn hãy gõ từ khóa ví dụ như "cách thi" hoặc "xem điểm" để tôi hướng dẫn nhé!`;
     }
-    
-    // Default enhanced response
-    return `Tôi hiểu câu hỏi của bạn, ${userContext.name || 'bạn'}! Để giúp bạn tốt hơn:\n\n💡 **Gợi ý:**\n• Hỏi về: "làm bài thi", "xem điểm", "lớp học", "help"\n• Mô tả chi tiết vấn đề bạn gặp\n• Nêu rõ trang bạn đang ở\n\n📍 **Vị trí hiện tại:** ${userContext.currentPage}\n👤 **Vai trò:** ${userContext.role === 'teacher' ? 'Giáo viên' : 'Học sinh'}\n\nBạn có thể thử hỏi lại với từ khóa rõ ràng hơn không?`;
+
+    // --- 4. NHẬN DIỆN XEM ĐIỂM ---
+    if (/(điểm|kết quả|xem lại|đáp án|score|result)/i.test(input)) {
+        return `📊 **Cách xem điểm và kết quả:**
+
+• **Cách 1:** Ngay sau khi nộp bài, hệ thống sẽ hiện điểm số và số câu đúng ngay lập tức.
+• **Cách 2:** Bạn có thể vào trang **Dashboard** (Tổng quan) để xem thống kê điểm của tất cả các bài đã thi.
+• **Cách 3:** Vào trang **Lớp học** → Chọn tab **"Bài nộp"** để xem chi tiết đáp án đúng/sai của từng câu hỏi.`;
+    }
+
+    // --- 5. NHẬN DIỆN LỚP HỌC ---
+    if (/(lớp|class|khóa học|môn học|course)/i.test(input)) {
+        return `🏫 **Thông tin về Lớp học:**
+
+• Để vào lớp: Chọn mục **"Khóa Học"** trên Menu.
+• Nếu bạn không thấy lớp của mình: Hãy liên hệ với **Giáo viên** để được thêm vào danh sách lớp bằng họ tên hoặc username của bạn.
+• Lưu ý: Mỗi tài khoản sẽ có một danh sách lớp riêng do giáo viên quản lý.`;
+    }
+
+    // --- 6. NHẬN DIỆN TÀI KHỎI / MẬT KHẨU ---
+    if (/(tài khoản|mật khẩu|password|đăng nhập|login|profile|hồ sơ)/i.test(input)) {
+        return `🔐 **Hỗ trợ Tài khoản:**
+
+• **Quên mật khẩu:** Vui lòng liên hệ trực tiếp với **Giáo viên quản lý** của bạn để được reset mật khẩu mới.
+• **Đổi thông tin:** Bạn có thể vào trang **Profile** (Hồ sơ) để thay đổi họ tên, ảnh đại diện và Email.
+• **Lỗi đăng nhập:** Đảm bảo bạn nhập đúng User và Pass, không bật Caps Lock. Thử gõ mật khẩu ra ngoài để kiểm tra trước khi dán vào ô đăng nhập.`;
+    }
+
+    // --- 7. NHẬN DIỆN LỖI / SỰ CỐ ---
+    if (/(lỗi|không được|hỏng|lag|đứng|quay vòng)/i.test(input)) {
+        return `🔧 **Xử lý sự cố nhanh:**
+
+1. Nhấn phím **F5** để tải lại trang.
+2. Kiểm tra lại kết nối Interner (Wifi/4G).
+3. Sử dụng trình duyệt **Chrome** hoặc **Edge** phiên bản mới nhất.
+4. Nếu đang làm bài thi mà bị lỗi, hãy bình tĩnh tải lại trang, hệ thống đã lưu các câu trả lời trước đó của bạn.
+
+Nếu vẫn không được, hãy báo ngay cho Giáo viên hoặc Ban quản trị qua Zalo nhé!`;
+    }
+
+    // --- 8. NHẬN DIỆN CẢM ƠN / TẠM BIỆT ---
+    if (/(cảm ơn|thanks|thank|ok|bye|tạm biệt)/i.test(input)) {
+        return `Rất vui vì đã hỗ trợ được bạn! 😊 Chúc bạn học tập tốt và đạt kết quả cao trong các kỳ thi sắp tới.
+
+Tôi sẽ luôn ở đây nếu bạn cần giúp đỡ thêm!`;
+    }
+
+    // --- 9. DEFAULT ---
+    return `🤔 Tôi chưa hiểu ý bạn lắm.
+
+Bạn có thể gõ các từ như: "cách thi", "xem điểm", "liên hệ admin", "quên mật khẩu"... để tôi hỗ trợ nhanh nhất nhé!`;
   }
 }
 

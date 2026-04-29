@@ -62,7 +62,7 @@ const Dashboard = () => {
     if (!user) return 'Không xác định';
     const firstName = user.first_name || '';
     const lastName = user.last_name || '';
-    const fullName = `${firstName} ${lastName}`.trim();
+    const fullName = `${lastName} ${firstName}`.trim();
     return fullName || user.username || 'Không xác định';
   };
 
@@ -148,7 +148,9 @@ const Dashboard = () => {
 
   const teacherStats = useMemo(() => {
     const totalStudents = classes.reduce((sum, cls) => sum + (cls.students_count || cls.students?.length || 0), 0);
-    const totalExams = exams.length;
+    const myClassIds = classes.map(cls => cls.id);
+    const myExams = exams.filter(exam => myClassIds.includes(exam.exam_class));
+    const totalExams = myExams.length;
     const totalSubmissions = submissions.length;
     const avgScore = submissions.length
       ? submissions.reduce((sum, sub) => sum + (sub.score || 0), 0) / submissions.length
@@ -187,14 +189,10 @@ const Dashboard = () => {
   }, [classes, submissions, user?.id]);
 
   const recentExams = useMemo(() => {
-    if (isTeacher) {
-      return exams.slice(0, 5);
-    } else {
-      const myClasses = classes.filter(cls => cls.students?.some(student => student.id === user?.id));
-      const myClassIds = myClasses.map(cls => cls.id);
-      return exams.filter(exam => myClassIds.includes(exam.exam_class)).slice(0, 5);
-    }
-  }, [exams, classes, user?.id, isTeacher]);
+    const myClassIds = classes.map(cls => cls.id);
+    const myExams = exams.filter(exam => myClassIds.includes(exam.exam_class));
+    return myExams.slice(0, 5);
+  }, [exams, classes]);
 
   const recentSubmissions = useMemo(() => {
     if (isTeacher) {

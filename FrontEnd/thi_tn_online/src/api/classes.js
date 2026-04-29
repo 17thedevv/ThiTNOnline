@@ -31,3 +31,13 @@ export async function leaveClass({ classId }) {
   const res = await apiClient.post(`/api/classes/${classId}/leave/`);
   return res.data;
 }
+
+export async function deleteClass({ classId }) {
+  const res = await apiClient.delete(`/api/classes/${classId}/`);
+  return res.data;
+}
+
+export async function updateClass({ classId, name }) {
+  const res = await apiClient.patch(`/api/classes/${classId}/`, { name });
+  return res.data;
+}

@@ -3,16 +3,17 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getMe, login as loginApi } from "../../api/auth";
-import { FaUser, FaLock, FaGoogle, FaMicrosoft, FaQrcode, FaGraduationCap, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaUser, FaLock, FaGraduationCap, FaEye, FaEyeSlash } from "react-icons/fa";
 
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState(localStorage.getItem("rem_user") || "");
+  const [password, setPassword] = useState(localStorage.getItem("rem_pass") || "");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(localStorage.getItem("rem_check") === "true");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -28,10 +29,25 @@ const Login = () => {
     setIsSubmitting(true);
     
     try {
-      await loginApi({ username, password });
+      await loginApi({ username, password, rememberMe });
+      
+      if (rememberMe) {
+        localStorage.setItem("rem_user", username);
+        localStorage.setItem("rem_pass", password);
+        localStorage.setItem("rem_check", "true");
+      } else {
+        localStorage.removeItem("rem_user");
+        localStorage.removeItem("rem_pass");
+        localStorage.removeItem("rem_check");
+      }
+
       const me = await getMe();
       login(me);
-      navigate("/dashboard");
+      if (me.role === "admin") {
+        navigate("/statistics");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (e) {
       const msg =
         e?.response?.data?.detail ||
@@ -43,10 +59,7 @@ const Login = () => {
     }
   };
 
-  const handleSocialLogin = (provider) => {
-    // Handle social login logic here
-    console.log(`Login with ${provider}`);
-  };
+
 
   if (isLoading) {
     return (
@@ -106,7 +119,11 @@ const Login = () => {
 
             <div className="login-options">
               <label className="remember-me">
-                <input type="checkbox" />
+                <input 
+                  type="checkbox" 
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
                 <span>Ghi nhớ đăng nhập</span>
               </label>
               <div
@@ -133,30 +150,7 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="login-divider">
-            <span>Hoặc tiếp tục với</span>
-          </div>
 
-          <div className="login-social">
-            <button 
-              className="social-btn google"
-              onClick={() => handleSocialLogin('google')}
-            >
-              Google
-            </button>
-            <button 
-              className="social-btn microsoft"
-              onClick={() => handleSocialLogin('microsoft')}
-            >
-              Microsoft
-            </button>
-            <button 
-              className="social-btn qrcode"
-              onClick={() => handleSocialLogin('qrcode')}
-            >
-              QR Code
-            </button>
-          </div>
 
           <div className="login-register">
             Chưa có tài khoản?{" "}

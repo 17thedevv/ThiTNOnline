@@ -110,6 +110,8 @@ const Register = () => {
         email: formData.email.trim(),
         password: formData.password,
         role: formData.role,
+        first_name: formData.first_name.trim(),
+        last_name: formData.last_name.trim(),
       });
       
       setSuccess("Đăng ký thành công! Đang chuyển sang trang đăng nhập...");

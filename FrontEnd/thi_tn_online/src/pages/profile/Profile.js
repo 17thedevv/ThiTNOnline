@@ -36,7 +36,7 @@ const Profile = () => {
     if (!user) return 'Không xác định';
     const firstName = user.first_name || '';
     const lastName = user.last_name || '';
-    const fullName = `${firstName} ${lastName}`.trim();
+    const fullName = `${lastName} ${firstName}`.trim();
     return fullName || user.username || 'Không xác định';
   };
   
