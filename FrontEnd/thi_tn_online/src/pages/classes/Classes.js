@@ -351,8 +351,22 @@ const Classes = () => {
                 onClick={() => navigate(`/classes/${cls.id}`)}
               >
                 <div className="class-header">
-                  <div className="class-icon">
-                    <FaChalkboardTeacher />
+                  <div className="class-avatar-wrap">
+                    {cls.teacher_avatar ? (
+                      <img
+                        src={cls.teacher_avatar}
+                        alt={cls.teacher_full_name || cls.teacher_name || 'GV'}
+                        className="teacher-avatar-img"
+                        title={`GV: ${cls.teacher_full_name || cls.teacher_name || ''}`}
+                      />
+                    ) : (
+                      <div
+                        className="teacher-avatar-fallback"
+                        title={`GV: ${cls.teacher_full_name || cls.teacher_name || ''}`}
+                      >
+                        {(cls.teacher_full_name || cls.teacher_name || 'G').charAt(0).toUpperCase()}
+                      </div>
+                    )}
                   </div>
                   <div className="class-badge">
                     {isTeacherLike ? "Giáo viên" : "Học sinh"}

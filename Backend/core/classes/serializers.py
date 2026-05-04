@@ -25,6 +25,7 @@ class ClassSerializer(serializers.ModelSerializer):
     subjects = serializers.SerializerMethodField()
     teacher_name = serializers.CharField(source='teacher.username', read_only=True)
     teacher_full_name = serializers.SerializerMethodField()
+    teacher_avatar = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(read_only=True)
     
     class Meta:
@@ -47,3 +48,12 @@ class ClassSerializer(serializers.ModelSerializer):
     def get_teacher_full_name(self, obj):
         teacher = obj.teacher
         return f"{teacher.last_name} {teacher.first_name}".strip() or teacher.username
+
+    def get_teacher_avatar(self, obj):
+        request = self.context.get('request')
+        teacher = obj.teacher
+        if teacher and teacher.avatar:
+            if request:
+                return request.build_absolute_uri(teacher.avatar.url)
+            return teacher.avatar.url
+        return None
