@@ -1069,55 +1069,59 @@ const ExamDetail = () => {
                 );
               })}
             </div>
-          </div>
-          
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '20px'
-          }}>
-            <button 
-              onClick={handlePrev}
-              disabled={current === 0}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 24px',
-                background: '#e2e8f0',
-                color: '#4a5568',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: current === 0 ? 'not-allowed' : 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              <FaArrowLeft /> Câu trước
-            </button>
-            
-            <div style={{ fontWeight: 'bold', color: '#718096' }}>
-              {current + 1} / {questions.length}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '20px',
+              marginTop: '40px',
+              paddingTop: '20px',
+              borderTop: darkMode ? '1px solid #4a5568' : '1px solid #e2e8f0'
+            }}>
+              <button 
+                onClick={handlePrev}
+                disabled={current === 0}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 24px',
+                  background: current === 0 ? (darkMode ? '#4a5568' : '#e2e8f0') : (darkMode ? '#2d3748' : '#edf2f7'),
+                  color: current === 0 ? (darkMode ? '#718096' : '#a0aec0') : (darkMode ? 'white' : '#4a5568'),
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: current === 0 ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold',
+                  transition: 'background 0.2s'
+                }}
+              >
+                <FaArrowLeft /> Câu trước
+              </button>
+              
+              <div style={{ fontWeight: 'bold', color: darkMode ? '#a0aec0' : '#718096' }}>
+                {current + 1} / {questions.length}
+              </div>
+              
+              <button 
+                onClick={handleNext}
+                disabled={current === questions.length - 1}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 24px',
+                  background: current === questions.length - 1 ? (darkMode ? '#4a5568' : '#e2e8f0') : '#3b82f6',
+                  color: current === questions.length - 1 ? (darkMode ? '#718096' : '#a0aec0') : 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: current === questions.length - 1 ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold',
+                  transition: 'background 0.2s'
+                }}
+              >
+                Câu tiếp <FaArrowRight />
+              </button>
             </div>
-            
-            <button 
-              onClick={handleNext}
-              disabled={current === questions.length - 1}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 24px',
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: current === questions.length - 1 ? 'not-allowed' : 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              Câu tiếp <FaArrowRight />
-            </button>
           </div>
         </main>
       </div>
