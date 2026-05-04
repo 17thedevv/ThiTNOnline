@@ -55,9 +55,13 @@ const ClassDetail = () => {
   };
 
   const role = user?.role;
-  const isTeacherLike = role === "teacher" || role === "admin";
-
   const [cls, setCls] = useState(null);
+  
+  const isTeacherLike =
+    user?.role === "admin" ||
+    (user?.role === "teacher" && cls?.teacher_name === user?.username) ||
+    cls?.teacher === user?.id;
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [removingId, setRemovingId] = useState(null);
