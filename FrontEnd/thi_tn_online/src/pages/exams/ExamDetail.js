@@ -21,6 +21,7 @@ import {
   FaUserGraduate,
   FaPercent
 } from "react-icons/fa";
+import { useCallback } from "react";
 import './ExamDetail.css';
 
 const ExamDetail = () => {
@@ -193,8 +194,8 @@ const ExamDetail = () => {
     setFlagged((prev) => ({ ...prev, [questionId]: !prev[questionId] }));
   };
 
-  const handleSubmit = async () => {
-    if (submitting) return;
+  const handleSubmit = useCallback(async () => {
+    if (submitting || submitResult) return;
     setSubmitting(true);
     try {
       const result = await submitExam({
@@ -216,14 +217,8 @@ const ExamDetail = () => {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [examId, answers, questions.length, submitting, submitResult]);
 
-  // Timer effect
-  useEffect(() => {
-    if (timeLeft === null || timeLeft <= 0) return;
-    const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [timeLeft]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -266,10 +261,10 @@ const ExamDetail = () => {
 
   // Auto submit when time runs out
   useEffect(() => {
-    if (timeLeft === 0 && !submitting && !isTeacherLike) {
+    if (timeLeft === 0 && !submitting && !isTeacherLike && !submitResult) {
       handleSubmit();
     }
-  }, [timeLeft, submitting, isTeacherLike, handleSubmit]);
+  }, [timeLeft, submitting, isTeacherLike, handleSubmit, submitResult]);
 
   // If teacher, show exam preview instead of taking interface
   if (isTeacherLike) {

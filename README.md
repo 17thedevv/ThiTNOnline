@@ -2,9 +2,9 @@
 
 Một nền tảng thi trắc nghiệm trực tuyến toàn diện, cho phép giáo viên quản lý lớp học, môn học, bộ đề thi và học sinh dễ dàng thực hiện các bài thi với giao diện hiện đại, thân thiện.
 
-## 🚀 Tính Năng Nổi Bật
+## Tính Năng Nổi Bật
 
-### 👨‍🏫 Dành cho Giáo viên (Teacher) & Quản trị viên (Admin)
+### Dành cho Giáo viên (Teacher) & Quản trị viên (Admin)
 - **Quản lý Lớp học & Môn học**: Phân cấp quản lý rõ ràng từ Lớp học -> Môn học -> Đề thi.
 - **Tạo & Quản lý Đề thi**:
   - Soạn câu hỏi trực tiếp trên giao diện web.
@@ -41,7 +41,7 @@ Một nền tảng thi trắc nghiệm trực tuyến toàn diện, cho phép gi
 
 ---
 
-## ⚙️ Hướng Dẫn Cài Đặt (Development Setup)
+## Hướng Dẫn Cài Đặt (Development Setup)
 
 Dự án được chia thành 2 thư mục chính: `Backend` và `FrontEnd`. Bạn cần chạy cả 2 dịch vụ song song.
 
@@ -53,8 +53,7 @@ cd Backend/core
 
 # Tạo môi trường ảo (tùy chọn nhưng khuyến khích)
 python -m venv venv
-venv\Scripts\activate  # Đối với Windows
-# source venv/bin/activate  # Đối với MacOS/Linux
+venv\Scripts\activate
 
 # Cài đặt các thư viện cần thiết
 pip install -r requirements.txt
@@ -79,17 +78,15 @@ cd FrontEnd/thi_tn_online
 
 # Cài đặt các dependencies
 npm install
-# hoặc yarn install
 
 # Chạy ứng dụng React
 npm start
-# hoặc yarn start
 ```
 *Frontend sẽ tự động mở trên trình duyệt tại địa chỉ: `http://localhost:3000`*
 
 ---
 
-## 📂 Cấu Trúc Thư Mục Chính
+## Cấu Trúc Thư Mục Chính
 
 ```text
 ThiTNOnline/
@@ -114,7 +111,7 @@ ThiTNOnline/
 
 ---
 
-## 💡 Hướng Dẫn Nhanh Dành Cho Giáo Viên
+## Hướng Dẫn Nhanh Dành Cho Giáo Viên
 1. Đăng nhập bằng tài khoản Admin hoặc Giáo viên.
 2. Tại màn hình **Lớp học**, chọn "Tạo Lớp Học".
 3. Vào chi tiết Lớp học vừa tạo, ấn "Thêm môn học".
@@ -123,5 +120,5 @@ ThiTNOnline/
 
 ---
 
-## 📄 Giấy phép (License)
+##  Giấy phép (License)
 Dự án được phát triển phục vụ mục đích giáo dục và mã nguồn mở. Mọi đóng góp (pull requests) đều được hoan nghênh!
