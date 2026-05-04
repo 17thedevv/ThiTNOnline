@@ -18,6 +18,7 @@ import ExamDetail from "../pages/exams/ExamDetail";
 import EditExam from "../pages/exams/EditExam";
 
 import Profile from "../pages/profile/Profile";
+import MySubmissions from "../pages/profile/MySubmissions";
 import ProtectedRoute from "./Protectedroute";
 import CreateExam from "../pages/exams/CreateExam";
 import AdminRoute from "./AdminRoute";
@@ -54,6 +55,7 @@ const AppRoutes = () => {
           <Route path="/exam/:examId" element={<ExamDetail />} />
 
           <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/submissions" element={<MySubmissions />} />
 
           {/* TEACHER + ADMIN */}
           <Route element={<TeacherAdminRoute />}>

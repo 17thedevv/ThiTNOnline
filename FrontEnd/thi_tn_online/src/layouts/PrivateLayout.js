@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { FaBook, FaHome, FaChartBar, FaShieldAlt, FaDatabase } from "react-icons/fa";
+import { FaBook, FaHome, FaChartBar, FaShieldAlt, FaDatabase, FaClipboardList } from "react-icons/fa";
 import TopBar from "../components/Topbar";
 import "./PrivateLayout.css";
 import logo from "../assets/images/gdht.jpg";
@@ -38,6 +38,17 @@ const PrivateLayout = () => {
                 <FaBook className="menu-icon" />
                 <span>Lớp học</span>
               </NavLink>
+              {user?.role === "student" && (
+                <NavLink
+                  to="/profile/submissions"
+                  className={({ isActive }) =>
+                    isActive ? "menu-item active" : "menu-item"
+                  }
+                >
+                  <FaClipboardList className="menu-icon" />
+                  <span>Lịch sử làm bài</span>
+                </NavLink>
+              )}
             </>
           )}
           <NavLink

@@ -60,13 +60,49 @@ const ExamDetail = () => {
           getExamQuestions({ examId }),
         ]);
         setExam(examData);
-        const normalized = (questionData || []).map((q) => ({
+
+        const rawQuestions = (questionData || []).map((q) => ({
           id: q.id,
           text: q.question_text,
           options: [q.option_a, q.option_b, q.option_c, q.option_d],
           correctAnswer: q.correct_answer,
           image: q.image ? `http://localhost:8000${q.image}` : null,
         }));
+
+        let normalized;
+        if (!isTeacherLike) {
+          // Xáo trộn thứ tự câu hỏi (Fisher-Yates)
+          const shuffledQuestions = [...rawQuestions];
+          for (let i = shuffledQuestions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledQuestions[i], shuffledQuestions[j]] = [shuffledQuestions[j], shuffledQuestions[i]];
+          }
+
+          // Xáo trộn đáp án của từng câu, lưu mapping gốc để chấm điểm đúng
+          normalized = shuffledQuestions.map((q) => {
+            const letters = ['A', 'B', 'C', 'D'];
+            const indices = [0, 1, 2, 3];
+            // Shuffle indices
+            for (let i = indices.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+            // shuffledOptions[newPos] = originalOption
+            const shuffledOptions = indices.map(origIdx => q.options[origIdx]);
+            // shuffledLetterMap[newPos] = originalLetter (dùng khi nộp bài)
+            const shuffledLetterMap = indices.map(origIdx => letters[origIdx]);
+            return {
+              ...q,
+              options: shuffledOptions,
+              // correctAnswer trong shuffled = vị trí mới của đáp án đúng
+              correctAnswer: q.correctAnswer, // giữ nguyên (original letter A/B/C/D)
+              shuffledLetterMap, // [newPos] -> originalLetter
+            };
+          });
+        } else {
+          normalized = rawQuestions;
+        }
+
         setQuestions(normalized);
         setCurrent(0);
         if (!isTeacherLike) {
@@ -141,8 +177,15 @@ const ExamDetail = () => {
   };
 
   // Event handlers
-  const handleAnswer = (questionId, answer) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: answer }));
+  const handleAnswer = (questionId, displayLetter) => {
+    // Nếu câu hỏi có shuffledLetterMap, convert sang original letter trước khi lưu
+    const question = questions.find(q => q.id === questionId);
+    const letterIndex = ['A', 'B', 'C', 'D'].indexOf(displayLetter);
+    const originalLetter =
+      question?.shuffledLetterMap && letterIndex >= 0
+        ? question.shuffledLetterMap[letterIndex]
+        : displayLetter;
+    setAnswers((prev) => ({ ...prev, [questionId]: originalLetter }));
   };
 
   const handleFlag = (questionId) => {
@@ -151,33 +194,15 @@ const ExamDetail = () => {
 
   const handleSubmit = async () => {
     if (submitting) return;
-    
-    // Debug: Log what we're sending
-    console.log('DEBUG: Submitting answers:', answers);
-    console.log('DEBUG: Answers type:', typeof answers);
-    console.log('DEBUG: Answers keys:', Object.keys(answers));
-    console.log('DEBUG: Answers values:', Object.values(answers));
-    
-    console.log('Submitting exam:', {
-      examId: parseInt(examId),
-      answers: answers,
-      totalQuestions: questions.length,
-      answeredCount: Object.keys(answers).length
-    });
-    
     setSubmitting(true);
     try {
       const result = await submitExam({
         examId: parseInt(examId),
         answers: answers,
       });
-      console.log('Submit result:', result);
-      
-      // Calculate correct answers from result
       const correctCount = result.correct_count || 0;
       const totalQuestions = result.total_questions || questions.length;
       const percentage = result.percentage || 0;
-      
       setSubmitResult({
         ...result,
         correctCount,
@@ -185,8 +210,8 @@ const ExamDetail = () => {
         percentage
       });
     } catch (e) {
-      console.error('Submit error:', e);
-      setError("Nộp bài thất bại. Vui lòng thử lại.");
+      const errMsg = e?.response?.data?.detail || "Nộp bài thất bại. Vui lòng thử lại.";
+      setError(errMsg);
     } finally {
       setSubmitting(false);
     }
