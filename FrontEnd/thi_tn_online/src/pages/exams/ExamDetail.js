@@ -21,6 +21,7 @@ import {
   FaUserGraduate,
   FaPercent
 } from "react-icons/fa";
+import './ExamDetail.css';
 
 const ExamDetail = () => {
   const { examId } = useParams();
@@ -741,47 +742,26 @@ const ExamDetail = () => {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: darkMode ? '#1a1a2e' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      fontFamily: 'Arial, sans-serif'
-    }}>
+    <div className={`exam-root ${darkMode ? 'dark' : 'light'}`}>
       {/* Header */}
-      <header style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '20px 30px',
-        background: darkMode ? '#2d3748' : 'white',
-        borderBottom: '1px solid #e2e8f0',
-        color: darkMode ? 'white' : '#1a202c'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+      <header className="exam-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <button 
+            className="header-btn secondary"
             onClick={() => window.history.back()}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 16px',
-              background: '#e2e8f0',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer'
-            }}
           >
             <FaArrowLeft /> Thoát
           </button>
           <div>
-            <h1 style={{ margin: '0', fontSize: '24px', fontWeight: 'bold' }}>{exam?.title}</h1>
-            <div style={{ display: 'flex', gap: '20px', marginTop: '4px', fontSize: '14px', color: '#718096' }}>
+            <h1 className="header-title">{exam?.title}</h1>
+            <div className="header-info">
               <span><FaUserGraduate /> {getUserFullName()}</span>
               {deadlineFormatted ? (
-                <span style={{ color: isExpired ? '#ef4444' : '#059669', fontWeight: 'bold' }}>
+                <span style={{ color: isExpired ? '#ef4444' : '#059669' }}>
                   <FaClock /> Hạn nộp: {deadlineFormatted}
                 </span>
               ) : (
-                <span style={{ color: '#10b981', fontWeight: 'bold' }}>
+                <span style={{ color: '#10b981' }}>
                   <FaClock /> Hạn nộp: Không giới hạn
                 </span>
               )}
@@ -789,73 +769,33 @@ const ExamDetail = () => {
           </div>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div className="header-actions">
           <div style={{ display: 'flex', gap: '8px' }}>
             <button 
+              className={`icon-btn ${showTimer ? 'active' : ''}`}
               onClick={() => setShowTimer(!showTimer)}
-              style={{
-                width: '40px',
-                height: '40px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: showTimer ? '#3b82f6' : '#e2e8f0',
-                color: showTimer ? 'white' : '#4a5568',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
+              title="Bật/Tắt đồng hồ"
             >
               <FaClock />
             </button>
             <button 
+              className={`icon-btn ${showQuestionPanel ? 'active' : ''}`}
               onClick={() => setShowQuestionPanel(!showQuestionPanel)}
-              style={{
-                width: '40px',
-                height: '40px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: showQuestionPanel ? '#3b82f6' : '#e2e8f0',
-                color: showQuestionPanel ? 'white' : '#4a5568',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
+              title="Bật/Tắt danh sách câu hỏi"
             >
               <FaList />
             </button>
             <button 
+              className={`icon-btn ${darkMode ? 'active' : ''}`}
               onClick={() => setDarkMode(!darkMode)}
-              style={{
-                width: '40px',
-                height: '40px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: darkMode ? '#3b82f6' : '#e2e8f0',
-                color: darkMode ? 'white' : '#4a5568',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
+              title="Chế độ tối"
             >
               <FaLightbulb />
             </button>
           </div>
           
           {showTimer && !isTeacherLike && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 16px',
-              background: 'white',
-              borderRadius: '8px',
-              fontWeight: 'bold',
-              fontSize: '18px',
-              color: getTimeColor()
-            }}>
+            <div className="timer-badge" style={{ color: getTimeColor() }}>
               <FaClock />
               <span>{formatTime(timeLeft)}</span>
             </div>
@@ -863,89 +803,57 @@ const ExamDetail = () => {
         </div>
       </header>
 
-      <div style={{ display: 'flex', height: 'calc(100vh - 100px)' }}>
-        {/* Question Panel */}
+      <div className="exam-main">
+        {/* Sidebar */}
         {showQuestionPanel && (
-          <aside style={{
-            width: '300px',
-            background: darkMode ? '#2d3748' : 'white',
-            borderRight: '1px solid #e2e8f0',
-            overflowY: 'auto',
-            padding: '20px',
-            color: darkMode ? 'white' : '#1a202c'
-          }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>
+          <aside className="exam-sidebar">
+            <h3 className="sidebar-title">
               <FaList /> Danh sách câu hỏi
             </h3>
             
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{
-                height: '8px',
-                background: '#e2e8f0',
-                borderRadius: '4px',
-                overflow: 'hidden',
-                marginBottom: '8px'
-              }}>
-                <div style={{
-                  height: '100%',
-                  background: '#3b82f6',
-                  width: `${getProgress()}%`,
-                  transition: 'width 0.3s ease'
-                }}></div>
+            <div className="progress-container">
+              <div className="progress-bar-bg">
+                <div 
+                  className="progress-bar-fill" 
+                  style={{ width: `${getProgress()}%` }}
+                ></div>
               </div>
-              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#3b82f6' }}>{getProgress()}%</span>
+              <span style={{ fontSize: '14px', fontWeight: '700', color: '#3b82f6' }}>
+                {getProgress()}% hoàn thành
+              </span>
             </div>
             
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              marginBottom: '24px',
-              padding: '16px',
-              background: darkMode ? '#4a5568' : '#f7fafc',
-              borderRadius: '8px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
-                <FaCheckCircle style={{ color: '#48bb78' }} />
-                <span>Đã trả lời: {stats.answered}</span>
+            <div className="stats-grid">
+              <div className="stat-item">
+                <FaCheckCircle style={{ color: '#10b981' }} />
+                <span>Đã làm: <strong>{stats.answered}</strong></span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
-                <FaFlag style={{ color: '#ed8936' }} />
-                <span>Đã đánh dấu: {stats.flaggedCount}</span>
+              <div className="stat-item">
+                <FaFlag style={{ color: '#f59e0b' }} />
+                <span>Đánh dấu: <strong>{stats.flaggedCount}</strong></span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
-                <FaQuestionCircle style={{ color: '#718096' }} />
-                <span>Còn lại: {stats.remaining}</span>
+              <div className="stat-item">
+                <FaQuestionCircle style={{ color: '#6b7280' }} />
+                <span>Còn lại: <strong>{stats.remaining}</strong></span>
               </div>
             </div>
             
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(5, 1fr)',
-              gap: '8px',
-              marginBottom: '24px'
-            }}>
+            <div className="question-grid">
               {questions.map((q, index) => {
                 const isAnswered = answers[q.id];
                 const isFlagged = flagged[q.id];
                 const isCurrent = index === current;
                 
+                let btnClass = 'q-btn';
+                if (isCurrent) btnClass += ' current';
+                else if (isAnswered) btnClass += ' answered';
+                else if (isFlagged) btnClass += ' flagged';
+                
                 return (
                   <button
                     key={q.id}
+                    className={btnClass}
                     onClick={() => handleJump(index)}
-                    style={{
-                      aspectRatio: '1',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: isCurrent ? '#bee3f8' : isAnswered ? '#c6f6d5' : isFlagged ? '#feebc8' : '#e2e8f0',
-                      border: isCurrent ? '2px solid #3182ce' : isAnswered ? '2px solid #48bb78' : isFlagged ? '2px solid #ed8936' : '2px solid transparent',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: 'bold'
-                    }}
                   >
                     {index + 1}
                   </button>
@@ -954,172 +862,87 @@ const ExamDetail = () => {
             </div>
             
             <button 
+              className={`submit-btn ${stats.answered > 0 ? 'active' : ''}`}
               onClick={() => setShowConfirmSubmit(true)}
               disabled={stats.answered === 0}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '12px',
-                background: stats.answered === 0 ? '#e2e8f0' : '#3b82f6',
-                color: stats.answered === 0 ? '#a0aec0' : 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: stats.answered === 0 ? 'not-allowed' : 'pointer',
-                fontWeight: 'bold'
-              }}
             >
-              <FaPaperPlane /> Nộp bài
+              <FaPaperPlane /> Nộp bài thi
             </button>
           </aside>
         )}
 
-        {/* Main Content */}
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '30px', overflowY: 'auto' }}>
-          <div style={{
-            background: darkMode ? '#2d3748' : 'white',
-            borderRadius: '16px',
-            padding: '30px',
-            marginBottom: '20px',
-            flex: 1,
-            color: darkMode ? 'white' : '#1a202c'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '24px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6' }}>
-                  Câu {current + 1}/{questions.length}
-                </span>
-                <button 
-                  onClick={() => handleFlag(question.id)}
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: flagged[question.id] ? '#feebc8' : '#e2e8f0',
-                    color: flagged[question.id] ? '#d69e2e' : '#4a5568',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {flagged[question.id] ? <FaFlag /> : <FaFlag />}
-                </button>
-              </div>
+        {/* Main Question Content */}
+        <main className="exam-content">
+          <div className="question-card">
+            <div className="q-header">
+              <span className="q-number">
+                Câu {current + 1} / {questions.length}
+              </span>
+              <button 
+                className={`icon-btn ${flagged[question.id] ? 'active' : ''}`}
+                onClick={() => handleFlag(question.id)}
+                title="Đánh dấu câu hỏi này để xem lại"
+                style={{ 
+                  background: flagged[question.id] ? '#fef3c7' : undefined,
+                  color: flagged[question.id] ? '#d97706' : undefined
+                }}
+              >
+                <FaFlag />
+              </button>
             </div>
             
-            <div style={{ marginBottom: '30px' }}>
-              <div style={{ lineHeight: '1.6', marginBottom: '16px', fontSize: '18px' }}>
-                {question.text}
-              </div>
-              {question.image && (
-                <img
-                  src={question.image}
-                  alt="Ảnh minh họa"
-                  style={{ maxWidth: '100%', maxHeight: '320px', borderRadius: '10px', border: '1px solid #e2e8f0', objectFit: 'contain', marginTop: '8px' }}
-                />
-              )}
+            <div className="q-text">
+              {question.text}
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {question.image && (
+              <img
+                src={question.image}
+                alt="Ảnh minh họa câu hỏi"
+                className="q-image"
+              />
+            )}
+            
+            <div className="options-list">
               {question.options && question.options.map((option, index) => {
                 if (!option) return null;
                 const letter = ['A', 'B', 'C', 'D'][index];
-                const isSelected = answers[question.id] === letter;
+                const originalLetter = question.shuffledLetterMap ? question.shuffledLetterMap[index] : letter;
+                const isSelected = answers[question.id] === originalLetter;
                 
                 return (
                   <button
                     key={index}
+                    className={`option-btn ${isSelected ? 'selected' : ''}`}
                     onClick={() => handleAnswer(question.id, letter)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '16px',
-                      padding: '20px',
-                      background: isSelected ? '#bee3f8' : '#f7fafc',
-                      border: isSelected ? '2px solid #3182ce' : '2px solid #e2e8f0',
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      textAlign: 'left'
-                    }}
                   >
-                    <div style={{
-                      width: '32px',
-                      height: '32px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: '#3b82f6',
-                      color: 'white',
-                      borderRadius: '50%',
-                      fontWeight: 'bold'
-                    }}>
-                      {letter}
-                    </div>
-                    <div style={{ flex: 1, lineHeight: '1.5' }}>{option}</div>
-                    {isSelected && <FaCheckCircle style={{ color: '#48bb78', fontSize: '20px' }} />}
+                    <div className="option-letter">{letter}</div>
+                    <div className="option-text">{option}</div>
+                    {isSelected && <FaCheckCircle style={{ color: '#3b82f6', fontSize: '20px', flexShrink: 0 }} />}
                   </button>
                 );
               })}
             </div>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '20px',
-              marginTop: '40px',
-              paddingTop: '20px',
-              borderTop: darkMode ? '1px solid #4a5568' : '1px solid #e2e8f0'
-            }}>
+            
+            <div className="q-nav">
               <button 
+                className="nav-btn"
                 onClick={handlePrev}
                 disabled={current === 0}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '12px 24px',
-                  background: current === 0 ? (darkMode ? '#4a5568' : '#e2e8f0') : (darkMode ? '#2d3748' : '#edf2f7'),
-                  color: current === 0 ? (darkMode ? '#718096' : '#a0aec0') : (darkMode ? 'white' : '#4a5568'),
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: current === 0 ? 'not-allowed' : 'pointer',
-                  fontWeight: 'bold',
-                  transition: 'background 0.2s'
-                }}
               >
                 <FaArrowLeft /> Câu trước
               </button>
               
-              <div style={{ fontWeight: 'bold', color: darkMode ? '#a0aec0' : '#718096' }}>
+              <span className="nav-status">
                 {current + 1} / {questions.length}
-              </div>
+              </span>
               
               <button 
+                className="nav-btn primary"
                 onClick={handleNext}
                 disabled={current === questions.length - 1}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '12px 24px',
-                  background: current === questions.length - 1 ? (darkMode ? '#4a5568' : '#e2e8f0') : '#3b82f6',
-                  color: current === questions.length - 1 ? (darkMode ? '#718096' : '#a0aec0') : 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: current === questions.length - 1 ? 'not-allowed' : 'pointer',
-                  fontWeight: 'bold',
-                  transition: 'background 0.2s'
-                }}
               >
-                Câu tiếp <FaArrowRight />
+                Câu tiếp theo <FaArrowRight />
               </button>
             </div>
           </div>
@@ -1130,61 +953,55 @@ const ExamDetail = () => {
       {showConfirmSubmit && (
         <div style={{
           position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, backdropFilter: 'blur(4px)'
         }}>
           <div style={{
-            background: 'white',
+            background: darkMode ? '#1f2937' : 'white',
             borderRadius: '16px',
-            padding: '30px',
-            maxWidth: '500px',
-            width: '90%'
+            padding: '32px',
+            maxWidth: '480px',
+            width: '90%',
+            color: darkMode ? '#f9fafb' : '#1f2937',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-              <FaExclamationTriangle style={{ fontSize: '24px', color: '#d69e2e' }} />
-              <h3 style={{ margin: 0, fontSize: '20px' }}>Xác nhận nộp bài</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+              <FaExclamationTriangle style={{ fontSize: '28px', color: '#f59e0b' }} />
+              <h3 style={{ margin: 0, fontSize: '22px', fontWeight: '700' }}>Xác nhận nộp bài</h3>
             </div>
             
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '28px' }}>
               <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                marginBottom: '16px',
-                padding: '16px',
-                background: '#f7fafc',
-                borderRadius: '8px'
+                display: 'flex', flexDirection: 'column', gap: '12px',
+                padding: '20px',
+                background: darkMode ? '#374151' : '#f3f4f6',
+                borderRadius: '12px'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px' }}>
                   <span>Tổng số câu:</span>
                   <strong>{questions.length}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px' }}>
                   <span>Đã trả lời:</span>
-                  <strong style={{ color: '#48bb78' }}>{stats.answered}</strong>
+                  <strong style={{ color: '#10b981' }}>{stats.answered}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px' }}>
                   <span>Chưa trả lời:</span>
-                  <strong style={{ color: '#d69e2e' }}>{stats.remaining}</strong>
+                  <strong style={{ color: '#f59e0b' }}>{stats.remaining}</strong>
                 </div>
               </div>
               
               {stats.remaining > 0 && (
                 <div style={{
-                  padding: '12px',
-                  background: '#feebc8',
-                  borderRadius: '8px',
-                  borderLeft: '4px solid #d69e2e'
+                  padding: '16px', marginTop: '16px',
+                  background: darkMode ? 'rgba(245, 158, 11, 0.1)' : '#fef3c7',
+                  borderRadius: '12px',
+                  borderLeft: '4px solid #f59e0b'
                 }}>
-                  <p style={{ margin: 0, color: '#975a16' }}>
-                    Bạn còn {stats.remaining} câu chưa trả lời. Bạn có chắc chắn muốn nộp bài?
+                  <p style={{ margin: 0, color: darkMode ? '#fcd34d' : '#92400e', lineHeight: '1.5' }}>
+                    Bạn còn <strong>{stats.remaining}</strong> câu chưa trả lời. Bạn có chắc chắn muốn nộp bài ngay bây giờ?
                   </p>
                 </div>
               )}
@@ -1193,32 +1010,18 @@ const ExamDetail = () => {
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button 
                 onClick={() => setShowConfirmSubmit(false)}
-                style={{
-                  padding: '12px 20px',
-                  background: '#e2e8f0',
-                  color: '#4a5568',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
+                className="header-btn secondary"
+                style={{ padding: '12px 24px' }}
               >
-                Tiếp tục làm bài
+                Tiếp tục làm
               </button>
               <button 
                 onClick={handleSubmit}
                 disabled={submitting}
-                style={{
-                  padding: '12px 20px',
-                  background: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: submitting ? 'not-allowed' : 'pointer',
-                  fontWeight: 'bold'
-                }}
+                className="submit-btn active"
+                style={{ width: 'auto', padding: '12px 24px', margin: 0 }}
               >
-                {submitting ? 'Đang nộp...' : 'Xác nhận nộp bài'}
+                {submitting ? 'Đang nộp...' : 'Nộp bài ngay'}
               </button>
             </div>
           </div>
