@@ -41,3 +41,12 @@ export async function updateClass({ classId, name }) {
   const res = await apiClient.patch(`/api/classes/${classId}/`, { name });
   return res.data;
 }
+
+export async function updateClassAvatar({ classId, avatarFile }) {
+  const formData = new FormData();
+  formData.append('avatar', avatarFile);
+  const res = await apiClient.patch(`/api/classes/${classId}/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getClassDetail, removeStudentFromClass, updateClass } from "../../api/classes";
+import { getClassDetail, removeStudentFromClass, updateClass, updateClassAvatar } from "../../api/classes";
 import { listExams, deleteExam } from "../../api/exams";
 import { getSubjectsByClass, createSubject, deleteSubject, getExamsBySubject } from "../../api/admin";
 import { listClassSubmissions, exportClassSubmissions, deleteSubmission, approveSubmission } from "../../api/submissions";
@@ -25,7 +25,8 @@ import {
   FaEdit,
   FaCalendarAlt,
   FaTrophy,
-  FaMedal
+  FaMedal,
+  FaCamera
 } from "react-icons/fa";
 
 const ClassDetail = () => {
@@ -77,6 +78,7 @@ const ClassDetail = () => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // Môn học
   const [subjects, setSubjects] = useState([]);
@@ -448,10 +450,57 @@ const ClassDetail = () => {
               </div>
             ) : (
               <div className="title-row">
+                <div className="class-detail-avatar-wrap">
+                  {cls && (cls.avatar || cls.teacher_avatar) ? (
+                    <img 
+                      src={cls.avatar || cls.teacher_avatar} 
+                      alt={cls.name} 
+                      className="class-detail-avatar" 
+                    />
+                  ) : (
+                    <div className="class-detail-avatar-fallback">
+                      {(cls?.name || 'L').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  {isTeacherLike && (
+                    <label className="avatar-upload-overlay" title="Thay đổi ảnh lớp">
+                      {uploadingAvatar ? <div className="mini-spinner-white"></div> : <FaCamera />}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        style={{ display: 'none' }} 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingAvatar(true);
+                          try {
+                            const res = await updateClassAvatar({ classId, avatarFile: file });
+                            setCls({ ...cls, avatar: res.avatar || res.class_avatar });
+                            const toast = document.createElement('div');
+                            toast.className = 'toast-success';
+                            toast.textContent = 'Đã cập nhật ảnh lớp!';
+                            document.body.appendChild(toast);
+                            setTimeout(() => toast.remove(), 3000);
+                            
+                            // Reload to ensure all data is synced
+                            const newData = await getClassDetail({ classId });
+                            setCls(newData);
+                          } catch (err) {
+                            alert('Không thể cập nhật ảnh lớp.');
+                          } finally {
+                            setUploadingAvatar(false);
+                          }
+                        }}
+                        disabled={uploadingAvatar}
+                      />
+                    </label>
+                  )}
+                </div>
                 <h1>{cls ? cls.name : `Lớp #${classId}`}</h1>
                 {isTeacherLike && cls && (
                   <button 
                     className="edit-title-btn"
+
                     onClick={() => setIsEditingName(true)}
                     title="Sửa tên lớp"
                   >

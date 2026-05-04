@@ -352,10 +352,10 @@ const Classes = () => {
               >
                 <div className="class-header">
                   <div className="class-avatar-wrap">
-                    {cls.teacher_avatar ? (
+                    {cls.avatar || cls.teacher_avatar ? (
                       <img
-                        src={cls.teacher_avatar}
-                        alt={cls.teacher_full_name || cls.teacher_name || 'GV'}
+                        src={cls.avatar || cls.teacher_avatar}
+                        alt={cls.name}
                         className="teacher-avatar-img"
                         title={`GV: ${cls.teacher_full_name || cls.teacher_name || ''}`}
                       />
