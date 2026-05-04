@@ -57,13 +57,9 @@ class ExamUpdateView(generics.RetrieveUpdateDestroyAPIView):
         return None
 
     def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if 'questions' not in request.data:
-            return super().update(request, *args, **kwargs)
-        return Response({
-            'message': 'Cập nhật thông tin cơ bản thành công!',
-            'data': super().update(request, *args, **kwargs).data
-        })
+        # Hỗ trợ PATCH (partial=True) để chỉ update một số field metadata
+        kwargs['partial'] = True
+        return super().update(request, *args, **kwargs)
 
 
 class QuestionListCreateView(generics.ListCreateAPIView):
@@ -76,6 +72,22 @@ class QuestionListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(exam_id=self.kwargs["exam_id"])
+
+
+class QuestionDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """PATCH/PUT/DELETE từng câu hỏi của một bài thi"""
+    serializer_class = QuestionSerializer
+    permission_classes = [IsTeacherOrAdmin]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_queryset(self):
+        return Question.objects.filter(exam_id=self.kwargs["exam_id"])
+
+    def get_object(self):
+        queryset = self.get_queryset()
+        obj = generics.get_object_or_404(queryset, pk=self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
 
 class BankQuestionListCreateView(generics.ListCreateAPIView):

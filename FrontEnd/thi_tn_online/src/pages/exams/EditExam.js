@@ -17,13 +17,19 @@ import {
   FaList
 } from "react-icons/fa";
 import "./EditExam.css";
-import { getExam, updateExam } from "../../api/exams";
+import { getExam, updateExam, updateQuestion, createQuestion as createExamQuestion } from "../../api/exams";
+
+
+
+const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
 
 const emptyQuestion = () => ({
+  id: null, // null = câu mới, chưa tồn tại trên server
   content: "",
   options: ["", "", "", ""],
   correctIndex: null,
 });
+
 
 const EditExam = () => {
   const { examId } = useParams();
@@ -44,10 +50,10 @@ const EditExam = () => {
   useEffect(() => {
     const loadExam = async () => {
       try {
-        const examData = await getExam(examId);
+        const examData = await getExam({ examId });
         setExamTitle(examData.title || "");
         setDuration(examData.duration || 15);
-        setMaxAttempts(examData.max_attempts || "");
+        setMaxAttempts(examData.max_attempts ?? "");
         
         // Format due_date for datetime-local input (YYYY-MM-DDTHH:MM)
         if (examData.due_date) {
@@ -56,8 +62,20 @@ const EditExam = () => {
           setDueDate(formattedDate);
         }
         
+        // Transform câu hỏi từ backend format → form format
         if (examData.questions && examData.questions.length > 0) {
-          setQuestions(examData.questions);
+          const transformed = examData.questions.map((q) => ({
+            id: q.id,  // giữ lại ID để PATCH đúng câu hỏi
+            content: q.question_text || "",
+            options: [
+              q.option_a || "",
+              q.option_b || "",
+              q.option_c || "",
+              q.option_d || "",
+            ],
+            correctIndex: OPTION_LETTERS.indexOf(q.correct_answer ?? "A"),
+          }));
+          setQuestions(transformed);
         }
       } catch (err) {
         setError("Không tải được thông tin bài thi");
@@ -69,6 +87,7 @@ const EditExam = () => {
 
     loadExam();
   }, [examId]);
+
 
   const handleQuestionChange = (index, value) => {
     const updated = [...questions];
@@ -106,6 +125,7 @@ const EditExam = () => {
   const duplicateQuestion = (index) => {
     const questionToDuplicate = questions[index];
     const newQuestion = {
+      id: null, // bản sao là câu mới
       content: questionToDuplicate.content + " (Bản sao)",
       options: [...questionToDuplicate.options],
       correctIndex: null,
@@ -115,6 +135,7 @@ const EditExam = () => {
     setQuestions(updated);
     setActiveIndex(index + 1);
   };
+
 
   const validateForm = () => {
     const errors = [];
@@ -164,24 +185,48 @@ const EditExam = () => {
     setSuccess("");
 
     try {
-      const examData = {
+      // 1. Cập nhật metadata bài thi
+      await updateExam(examId, {
         title: examTitle,
         duration: Number(duration),
         max_attempts: Number(maxAttempts) || null,
         due_date: dueDate || null,
-        questions: questions.map(q => ({
-          content: q.content,
-          options: q.options,
-          correct_index: q.correctIndex
-        }))
-      };
+      });
 
-      await updateExam(examId, examData);
-      setSuccess("Cập nhật bài thi thành công!");
-      
-      setTimeout(() => {
-        navigate(`/exam/${examId}`);
-      }, 1500);
+      // 2. Phương án B: update từng câu hỏi theo ID, tạo mới câu chưa có ID
+      const questionErrors = [];
+      for (const q of questions) {
+        const payload = {
+          question_text: q.content,
+          option_a: q.options[0] || "",
+          option_b: q.options[1] || "",
+          option_c: q.options[2] || "",
+          option_d: q.options[3] || "",
+          correct_answer: OPTION_LETTERS[q.correctIndex] || "A",
+          exam: Number(examId),
+        };
+
+        try {
+          if (q.id) {
+            // Câu đã tồn tại → PATCH
+            await updateQuestion(examId, q.id, payload);
+          } else {
+            // Câu mới → POST
+            await createExamQuestion({ examId, question: payload });
+          }
+        } catch (qErr) {
+          questionErrors.push(`Câu "${q.content.slice(0, 20)}...": ${qErr.message}`);
+        }
+      }
+
+      if (questionErrors.length > 0) {
+        setError(`Cập nhật xong metadata nhưng một số câu hỏi gặp lỗi:\n${questionErrors.join("\n")}`);
+      } else {
+        setSuccess("Cập nhật bài thi thành công!");
+        setTimeout(() => {
+          navigate(`/exam/${examId}`);
+        }, 1500);
+      }
       
     } catch (err) {
       setError("Không cập nhật được bài thi");
@@ -190,6 +235,7 @@ const EditExam = () => {
       setSaving(false);
     }
   };
+
 
   if (loading) {
     return (

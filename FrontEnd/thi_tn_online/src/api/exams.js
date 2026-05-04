@@ -13,13 +13,19 @@ export async function createExam(payload) {
 }
 
 export async function updateExam(examId, payload) {
-  const res = await apiClient.put(`/api/exams/${examId}/edit/`, {
+  // Chỉ gửi metadata (title, duration, max_attempts, due_date)
+  // Câu hỏi được update riêng qua updateQuestion / createQuestion
+  const res = await apiClient.patch(`/api/exams/${examId}/edit/`, {
     title: payload.title,
     duration: payload.duration,
     max_attempts: payload.max_attempts,
     due_date: payload.due_date,
-    questions: payload.questions
   });
+  return res.data;
+}
+
+export async function updateQuestion(examId, questionId, payload) {
+  const res = await apiClient.patch(`/api/exams/${examId}/questions/${questionId}/`, payload);
   return res.data;
 }
 
