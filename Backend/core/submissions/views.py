@@ -16,11 +16,11 @@ from .serializers import (
 
 
 class SubmissionListView(generics.ListAPIView):
-    serializer_class = SubmissionSerializer
+    serializer_class = SubmissionWithUserExamSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Submission.objects.filter(student=self.request.user).order_by(
+        return Submission.objects.select_related("exam", "student", "exam__exam_class").filter(student=self.request.user).order_by(
             "-submitted_at"
         )
 
