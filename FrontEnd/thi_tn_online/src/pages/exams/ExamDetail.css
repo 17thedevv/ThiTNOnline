@@ -2,6 +2,9 @@
   padding: 24px;
   max-width: 1200px;
   margin: auto;
+  transform: scale(0.95);
+  transform-origin: top center;
+  margin-bottom: -5%; /* Đỡ khoảng trống do scale */
 }
 
 .exam-header {
