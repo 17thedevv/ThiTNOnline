@@ -76,7 +76,6 @@ const Profile = () => {
   const loadProfile = async () => {
     try {
       const data = await getProfile();
-      console.log('Profile data:', data); // Debug log
       setProfile(data);
       setFormData({
         email: data.email || "",
@@ -305,7 +304,6 @@ const Profile = () => {
     if (avatarPreview) return avatarPreview;
     
     if (profile?.avatar && profile.avatar !== null && profile.avatar !== '') {
-      console.log('Profile avatar:', profile.avatar); // Debug log
       // If avatar is a full URL, return as is
       if (profile.avatar.startsWith('http')) {
         return profile.avatar;
@@ -314,7 +312,7 @@ const Profile = () => {
       return `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${profile.avatar}`;
     }
     
-    console.log('Profile avatar is null or empty, using default'); // Debug log
+    // Nếu không có, dùng avatar mặc định của role
     return defaultAvatar; // Fallback to default avatar
   };
 

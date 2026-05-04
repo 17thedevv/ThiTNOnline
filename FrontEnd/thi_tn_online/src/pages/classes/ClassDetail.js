@@ -650,7 +650,6 @@ const ClassDetail = () => {
                     <h3><FaStar /> Hoạt động gần đây</h3>
                     <div className="recent-activities">
                       {submissions.slice(0, 5).map(sub => {
-                        console.log('Sub item:', sub); // Debug each submission
                         return (
                         <div key={sub.id} className="activity-item">
                           <div className="activity-icon">
