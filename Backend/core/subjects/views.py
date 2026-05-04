@@ -12,15 +12,27 @@ class SubjectListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         class_id = self.request.query_params.get('class_id')
 
-        if getattr(user, 'role', '') == 'admin':
+        role = getattr(user, 'role', '')
+
+        if role == 'admin':
             queryset = Subject.objects.all().order_by('name')
-        else:
-            # Teacher chỉ thấy môn của các lớp mình phụ trách
+        elif role == 'teacher':
+            # Teacher thấy môn của các lớp mình phụ trách (hoặc môn của lớp bất kỳ nếu query theo class_id và teacher đang truy cập, mặc dù get_queryset sẽ tự query, nhưng để an toàn cứ cho lấy theo class_id nếu có)
             queryset = Subject.objects.filter(class_obj__teacher=user).order_by('name')
+        else:
+            # Student
+            queryset = Subject.objects.filter(class_obj__students=user).order_by('name')
 
         if class_id:
-            queryset = queryset.filter(class_obj_id=class_id)
-        return queryset
+            # Nếu có class_id, ta bỏ qua filter ban đầu và lấy các môn của class đó, TÙY THEO quyền
+            if role == 'admin':
+                queryset = Subject.objects.filter(class_obj_id=class_id).order_by('name')
+            elif role == 'teacher':
+                queryset = Subject.objects.filter(class_obj_id=class_id).order_by('name')
+            else:
+                queryset = Subject.objects.filter(class_obj_id=class_id, class_obj__students=user).order_by('name')
+                
+        return queryset.distinct()
 
 
 class SubjectDetailView(generics.RetrieveUpdateDestroyAPIView):
