@@ -67,3 +67,19 @@ export async function getExamQuestions({ examId }) {
   const res = await apiClient.get(`/api/exams/${examId}/questions/`);
   return res.data;
 }
+
+export async function exportExamResults(examId) {
+  const res = await apiClient.get(`/api/exams/${examId}/export/`, {
+    responseType: 'blob',
+  });
+  return res;
+}
+
+export async function importQuestions(examId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await apiClient.post(`/api/exams/${examId}/import-questions/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+}

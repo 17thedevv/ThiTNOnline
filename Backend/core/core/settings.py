@@ -143,6 +143,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    # Pagination được bật riêng lẻ ở từng view (không bật global để tránh breaking change)
 }
 
 SIMPLE_JWT = {

@@ -17,7 +17,8 @@ import {
   FaList
 } from "react-icons/fa";
 import "./EditExam.css";
-import { getExam, updateExam, updateQuestion, deleteQuestion, createQuestion as createExamQuestion } from "../../api/exams";
+import { getExam, updateExam, updateQuestion, deleteQuestion, createQuestion as createExamQuestion, exportExamResults, importQuestions } from "../../api/exams";
+
 
 
 
@@ -49,6 +50,13 @@ const EditExam = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   // Track câu hỏi đã xóa khỏi UI nhưng còn tồn tại trên server (có id)
   const [deletedQuestionIds, setDeletedQuestionIds] = useState([]);
+  // Export / Import
+  const [exporting, setExporting] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
 
 
   // Load existing exam data
@@ -258,6 +266,47 @@ const EditExam = () => {
     }
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await exportExamResults(examId);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `KetQua_${examTitle.replace(/\s+/g, '_').slice(0, 40)}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setError('Xuất kết quả thất bại.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const result = await importQuestions(examId, importFile);
+      setImportResult({ success: true, ...result });
+      // Reload câu hỏi sau khi import
+      const { getExamQuestions } = await import('../../api/exams');
+      const newQs = await getExamQuestions({ examId });
+      const mapped = newQs.map(q => ({
+        id: q.id,
+        content: q.question_text,
+        options: [q.option_a, q.option_b, q.option_c, q.option_d],
+        correctIndex: ['A','B','C','D'].indexOf(q.correct_answer),
+      }));
+      setQuestions(mapped);
+      setActiveIndex(0);
+    } catch (e) {
+      setImportResult({ success: false, message: e?.response?.data?.detail || 'Import thất bại.' });
+    } finally {
+      setImporting(false);
+    }
+  };
 
 
   if (loading) {
@@ -273,14 +322,83 @@ const EditExam = () => {
 
   return (
     <div className="edit-exam-container">
+      {/* ── Import Modal ── */}
+      {showImport && (
+        <div className="import-overlay" onClick={() => setShowImport(false)}>
+          <div className="import-modal" onClick={e => e.stopPropagation()}>
+            <h3><FaPlus /> Import câu hỏi từ CSV</h3>
+            <div className="import-hint">
+              <strong>Format CSV:</strong><br />
+              <code>Câu hỏi,Đáp án A,Đáp án B,Đáp án C,Đáp án D,Đáp án đúng</code><br />
+              <small>Cột "Đáp án đúng" nhận giá trị: A / B / C / D</small><br />
+              <a href="/mau_import_cau_hoi.csv" download className="sample-csv-link">
+                📥 Tải file mẫu CSV
+              </a>
+            </div>
+
+            <label className="import-file-label">
+              <input
+                type="file"
+                accept=".csv"
+                style={{ display: 'none' }}
+                onChange={e => { setImportFile(e.target.files[0]); setImportResult(null); }}
+              />
+              {importFile ? `📄 ${importFile.name}` : '📂 Chọn file CSV...'}
+            </label>
+
+            {importResult && (
+              <div className={`import-result ${importResult.success ? 'success' : 'error'}`}>
+                {importResult.success
+                  ? `✅ ${importResult.message} (${importResult.created} câu)`
+                  : `❌ ${importResult.message}`}
+                {importResult.errors?.length > 0 && (
+                  <ul>{importResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                )}
+              </div>
+            )}
+
+            <div className="import-actions">
+              <button
+                className="import-confirm-btn"
+                onClick={handleImport}
+                disabled={!importFile || importing}
+              >
+                {importing ? <><FaSpinner className="spin-icon" /> Đang import...</> : 'Import'}
+              </button>
+              <button className="import-cancel-btn" onClick={() => setShowImport(false)}>
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="exam-header">
         <h2><FaEdit /> Chỉnh sửa bài thi</h2>
-        <button 
-          className="back-btn"
-          onClick={() => navigate(-1)}
-        >
-          <FaArrowLeft /> Quay lại
-        </button>
+        <div className="header-actions">
+          <button
+            className="export-btn"
+            onClick={handleExport}
+            disabled={exporting}
+            title="Xuất kết quả thi ra CSV"
+          >
+            {exporting ? <FaSpinner className="spin-icon" /> : <FaList />}
+            {exporting ? 'Xuất...' : 'Xuất CSV'}
+          </button>
+          <button
+            className="import-btn"
+            onClick={() => { setShowImport(true); setImportResult(null); setImportFile(null); }}
+            title="Import câu hỏi từ file CSV"
+          >
+            <FaPlus /> Import CSV
+          </button>
+          <button
+            className="back-btn"
+            onClick={() => navigate(-1)}
+          >
+            <FaArrowLeft /> Quay lại
+          </button>
+        </div>
       </div>
 
       {success && (

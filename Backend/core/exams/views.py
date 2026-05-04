@@ -287,3 +287,139 @@ class ExamStatisticsView(APIView):
             "score_distribution": score_distribution,
             "student_results": student_results
         })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 3 — Export kết quả thi / Import câu hỏi
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ExamExportResultsView(APIView):
+    """Export kết quả thi của một đề thi cụ thể ra CSV (Excel-compatible)."""
+    permission_classes = [IsTeacherOrAdmin]
+
+    def get(self, request, exam_id):
+        import csv
+        from django.http import HttpResponse
+        from submissions.models import Submission
+
+        exam = generics.get_object_or_404(Exam, pk=exam_id)
+
+        # Chỉ teacher tạo đề hoặc admin mới được export
+        if exam.created_by != request.user and not request.user.is_staff:
+            return Response(
+                {"detail": "Bạn không có quyền xuất kết quả đề thi này."},
+                status=403
+            )
+
+        submissions = (
+            Submission.objects
+            .select_related("student")
+            .filter(exam=exam)
+            .order_by("-submitted_at")
+        )
+
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        safe_title = exam.title.replace(" ", "_")[:40]
+        response["Content-Disposition"] = f'attachment; filename="KetQua_{safe_title}.csv"'
+
+        # UTF-8 BOM để Excel nhận đúng tiếng Việt
+        response.write("\ufeff".encode("utf8"))
+
+        writer = csv.writer(response)
+        writer.writerow(["STT", "Họ tên", "Tên đăng nhập", "Email", "Điểm", "Đạt/Không đạt", "Thời gian nộp"])
+
+        for idx, sub in enumerate(submissions, 1):
+            student = sub.student
+            full_name = f"{student.first_name} {student.last_name}".strip() or student.username
+            passed = "Đạt" if sub.score >= 5 else "Không đạt"
+            submitted = sub.submitted_at.strftime("%d/%m/%Y %H:%M:%S") if sub.submitted_at else ""
+            writer.writerow([idx, full_name, student.username, student.email, sub.score, passed, submitted])
+
+        return response
+
+
+class ImportQuestionsView(APIView):
+    """Import câu hỏi từ file CSV vào một đề thi.
+
+    Format CSV (có header):
+        Câu hỏi,Đáp án A,Đáp án B,Đáp án C,Đáp án D,Đáp án đúng
+    Cột 'Đáp án đúng' nhận giá trị A / B / C / D.
+    """
+    permission_classes = [IsTeacherOrAdmin]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, exam_id):
+        import csv
+        import io
+
+        exam = generics.get_object_or_404(Exam, pk=exam_id)
+
+        if exam.created_by != request.user and not request.user.is_staff:
+            return Response({"detail": "Bạn không có quyền import câu hỏi vào đề thi này."}, status=403)
+
+        file = request.FILES.get("file")
+        if not file:
+            return Response({"detail": "Vui lòng upload file CSV."}, status=400)
+
+        if not file.name.endswith(".csv"):
+            return Response({"detail": "Chỉ hỗ trợ file .csv."}, status=400)
+
+        try:
+            content = file.read().decode("utf-8-sig")  # utf-8-sig để bỏ BOM nếu có
+            reader = csv.DictReader(io.StringIO(content))
+        except Exception as e:
+            return Response({"detail": f"Không đọc được file: {str(e)}"}, status=400)
+
+        # Mapping tên cột linh hoạt
+        FIELD_MAP = {
+            "question_text": ["câu hỏi", "noi dung", "cau hoi", "question"],
+            "option_a": ["đáp án a", "a", "option a", "dap an a"],
+            "option_b": ["đáp án b", "b", "option b", "dap an b"],
+            "option_c": ["đáp án c", "c", "option c", "dap an c"],
+            "option_d": ["đáp án d", "d", "option d", "dap an d"],
+            "correct_answer": ["đáp án đúng", "correct", "dap an dung", "đáp án"],
+        }
+
+        def find_col(row, aliases):
+            for key in row.keys():
+                if key.strip().lower() in aliases:
+                    return key
+            return None
+
+        created, errors = 0, []
+        for line_num, row in enumerate(reader, 2):
+            cols = {k: find_col(row, v) for k, v in FIELD_MAP.items()}
+            missing = [k for k, v in cols.items() if v is None]
+            if missing and line_num == 2:
+                return Response({
+                    "detail": f"Không tìm thấy cột: {', '.join(missing)}. Kiểm tra lại header CSV.",
+                    "available_columns": list(row.keys())
+                }, status=400)
+
+            try:
+                q_text = row[cols["question_text"]].strip() if cols["question_text"] else ""
+                if not q_text:
+                    continue
+
+                correct = (row[cols["correct_answer"]].strip().upper() if cols["correct_answer"] else "A")
+                if correct not in ("A", "B", "C", "D"):
+                    correct = "A"
+
+                Question.objects.create(
+                    exam=exam,
+                    question_text=q_text,
+                    option_a=row[cols["option_a"]].strip() if cols["option_a"] else "",
+                    option_b=row[cols["option_b"]].strip() if cols["option_b"] else "",
+                    option_c=row[cols["option_c"]].strip() if cols["option_c"] else "",
+                    option_d=row[cols["option_d"]].strip() if cols["option_d"] else "",
+                    correct_answer=correct,
+                )
+                created += 1
+            except Exception as e:
+                errors.append(f"Dòng {line_num}: {str(e)}")
+
+        return Response({
+            "message": f"Đã import {created} câu hỏi thành công.",
+            "created": created,
+            "errors": errors,
+        }, status=201 if created > 0 else 400)
