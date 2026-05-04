@@ -5,6 +5,7 @@ import { listExams, deleteExam } from "../../api/exams";
 import { getSubjectsByClass, createSubject, deleteSubject, getExamsBySubject } from "../../api/admin";
 import { listClassSubmissions, exportClassSubmissions, deleteSubmission, approveSubmission } from "../../api/submissions";
 import { useAuth } from "../../contexts/AuthContext";
+import "./ClassDetail.css";
 import { 
   FaArrowLeft, 
   FaUsers, 
@@ -1154,6 +1155,70 @@ const ClassDetail = () => {
         .remove-btn-small:hover { background: #ef4444; color: white; }
         .edit-btn-small { background: #eff6ff; color: #3b82f6; border: none; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; margin-right: 6px; }
         .edit-btn-small:hover { background: #3b82f6; color: white; }
+
+        /* Class Avatar */
+        .class-detail-avatar-wrap {
+          position: relative;
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          margin-right: 16px;
+          flex-shrink: 0;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .class-detail-avatar {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 2px solid white;
+        }
+
+        .class-detail-avatar-fallback {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          font-size: 26px;
+          font-weight: bold;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid white;
+        }
+
+        .avatar-upload-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.5);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 18px;
+          opacity: 0;
+          cursor: pointer;
+          transition: opacity 0.2s;
+        }
+
+        .class-detail-avatar-wrap:hover .avatar-upload-overlay {
+          opacity: 1;
+        }
+
+        .mini-spinner-white {
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top-color: white;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
 
         /* Header */
         .class-header {
