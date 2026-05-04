@@ -8,6 +8,17 @@ __pycache__/
 *.pyc
 venv/
 
+# Database (không commit database local)
+*.sqlite3
+db.sqlite3
+
+# Environment (không commit secrets)
+.env
+!.env.example
+
+# Media uploads
+Backend/core/media/
+
 # Hệ điều hành
 .DS_Store
 Thumbs.db

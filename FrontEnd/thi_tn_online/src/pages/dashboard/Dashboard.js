@@ -28,30 +28,6 @@ import {
 } from "react-icons/fa";
 import "./Dashboard.css";
 
-// Action handlers for navigation
-const handleEditExam = (examId, examTitle, navigate) => {
-  console.log(`Chỉnh sửa bài thi ID: ${examId}`);
-  // Navigate to edit exam page
-  navigate(`/exams/${examId}/edit`);
-};
-
-const handleViewExam = (examId, examTitle, navigate) => {
-  console.log(`Xem chi tiết bài thi ID: ${examId}`);
-  // Navigate to exam details page
-  navigate(`/exams/${examId}`);
-};
-
-const handleStartExam = (examId, examTitle, duration, questionCount, navigate) => {
-  console.log(`Bắt đầu làm bài thi ID: ${examId}`);
-  // Navigate to take exam page
-  navigate(`/exams/${examId}/take`);
-};
-
-const handleViewSubmissions = (examId, examTitle, navigate) => {
-  console.log(`Xem bài nộp của bài thi ID: ${examId}`);
-  // Navigate to submissions page
-  navigate(`/exams/${examId}/submissions`);
-};
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -66,28 +42,20 @@ const Dashboard = () => {
     return fullName || user.username || 'Không xác định';
   };
 
-  // Action handlers for navigation
-  const handleEditExam = (examId, examTitle) => {
-    console.log(`Chỉnh sửa bài thi ID: ${examId}`);
-    // Navigate to exam detail page
+  // Action handlers
+  const handleEditExam = (examId) => {
+    navigate(`/exams/${examId}/edit`);
+  };
+
+  const handleViewExam = (examId) => {
     navigate(`/exam/${examId}`);
   };
 
-  const handleViewExam = (examId, examTitle) => {
-    console.log(`Xem chi tiết bài thi ID: ${examId}`);
-    // Navigate to exam details page
+  const handleStartExam = (examId) => {
     navigate(`/exam/${examId}`);
   };
 
-  const handleStartExam = (examId, examTitle, duration, questionCount) => {
-    console.log(`Bắt đầu làm bài thi ID: ${examId}`);
-    // Navigate to exam detail page
-    navigate(`/exam/${examId}`);
-  };
-
-  const handleViewSubmissions = (examId, examTitle) => {
-    console.log(`Xem bài nộp của bài thi ID: ${examId}`);
-    // Navigate to exam detail page
+  const handleViewSubmissions = (examId) => {
     navigate(`/exam/${examId}`);
   };
 
@@ -114,20 +82,14 @@ const Dashboard = () => {
 
       if (clsRes.status === "fulfilled") {
         setClasses(clsRes.value || []);
-      } else {
-        console.error("Không tải được danh sách lớp:", clsRes.reason);
       }
 
       if (subsRes.status === "fulfilled") {
         setSubmissions(subsRes.value || []);
-      } else {
-        console.error("Không tải được danh sách bài nộp:", subsRes.reason);
       }
 
       if (exsRes.status === "fulfilled") {
         setExams(exsRes.value || []);
-      } else {
-        console.error("Không tải được danh sách đề thi:", exsRes.reason);
       }
 
       if (
@@ -147,9 +109,9 @@ const Dashboard = () => {
   }, []);
 
   const teacherStats = useMemo(() => {
+    // Lọc đề thi do teacher này tạo (hỗ trợ cả đề thi cũ exam_class và mới qua subject)
+    const myExams = exams.filter(exam => exam.created_by === user?.id);
     const totalStudents = classes.reduce((sum, cls) => sum + (cls.students_count || cls.students?.length || 0), 0);
-    const myClassIds = classes.map(cls => cls.id);
-    const myExams = exams.filter(exam => myClassIds.includes(exam.exam_class));
     const totalExams = myExams.length;
     const totalSubmissions = submissions.length;
     const avgScore = submissions.length
@@ -165,7 +127,7 @@ const Dashboard = () => {
       passedSubmissions,
       avgScore: avgScore.toFixed(1),
     };
-  }, [classes, exams, submissions]);
+  }, [classes, exams, submissions, user?.id]);
 
   const studentStats = useMemo(() => {
     const myClasses = classes.filter(cls => 
@@ -189,10 +151,10 @@ const Dashboard = () => {
   }, [classes, submissions, user?.id]);
 
   const recentExams = useMemo(() => {
-    const myClassIds = classes.map(cls => cls.id);
-    const myExams = exams.filter(exam => myClassIds.includes(exam.exam_class));
+    // Hiển thị 5 đề thi gần nhất do teacher này tạo
+    const myExams = exams.filter(exam => exam.created_by === user?.id);
     return myExams.slice(0, 5);
-  }, [exams, classes]);
+  }, [exams, user?.id]);
 
   const recentSubmissions = useMemo(() => {
     if (isTeacher) {

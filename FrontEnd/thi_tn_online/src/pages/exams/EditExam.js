@@ -17,7 +17,8 @@ import {
   FaList
 } from "react-icons/fa";
 import "./EditExam.css";
-import { getExam, updateExam, updateQuestion, createQuestion as createExamQuestion } from "../../api/exams";
+import { getExam, updateExam, updateQuestion, deleteQuestion, createQuestion as createExamQuestion } from "../../api/exams";
+
 
 
 
@@ -40,11 +41,15 @@ const EditExam = () => {
   const [maxAttempts, setMaxAttempts] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveProgress, setSaveProgress] = useState({ current: 0, total: 0 });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState([emptyQuestion()]);
   const [activeIndex, setActiveIndex] = useState(0);
+  // Track câu hỏi đã xóa khỏi UI nhưng còn tồn tại trên server (có id)
+  const [deletedQuestionIds, setDeletedQuestionIds] = useState([]);
+
 
   // Load existing exam data
   useEffect(() => {
@@ -115,6 +120,11 @@ const EditExam = () => {
 
   const removeQuestion = (index) => {
     if (questions.length === 1) return;
+    const questionToRemove = questions[index];
+    // Nếu câu hỏi có ID thực (tồn tại trên server) → đánh dấu để xóa khi submit
+    if (questionToRemove.id) {
+      setDeletedQuestionIds(prev => [...prev, questionToRemove.id]);
+    }
     const updated = questions.filter((_, i) => i !== index);
     setQuestions(updated);
     if (activeIndex >= updated.length) {
@@ -183,6 +193,7 @@ const EditExam = () => {
     setSaving(true);
     setError("");
     setSuccess("");
+    setSaveProgress({ current: 0, total: deletedQuestionIds.length + questions.length + 1 });
 
     try {
       // 1. Cập nhật metadata bài thi
@@ -192,8 +203,19 @@ const EditExam = () => {
         max_attempts: Number(maxAttempts) || null,
         due_date: dueDate || null,
       });
+      setSaveProgress(p => ({ ...p, current: p.current + 1 }));
 
-      // 2. Phương án B: update từng câu hỏi theo ID, tạo mới câu chưa có ID
+      // 2. Xóa các câu hỏi đã bị remove khỏi UI trên server
+      for (const qId of deletedQuestionIds) {
+        try {
+          await deleteQuestion(examId, qId);
+        } catch (_) {
+          // Bỏ qua nếu câu hỏi đã không tồn tại
+        }
+        setSaveProgress(p => ({ ...p, current: p.current + 1 }));
+      }
+
+      // 3. Update từng câu hỏi theo ID, tạo mới câu chưa có ID
       const questionErrors = [];
       for (const q of questions) {
         const payload = {
@@ -208,20 +230,20 @@ const EditExam = () => {
 
         try {
           if (q.id) {
-            // Câu đã tồn tại → PATCH
             await updateQuestion(examId, q.id, payload);
           } else {
-            // Câu mới → POST
             await createExamQuestion({ examId, question: payload });
           }
         } catch (qErr) {
           questionErrors.push(`Câu "${q.content.slice(0, 20)}...": ${qErr.message}`);
         }
+        setSaveProgress(p => ({ ...p, current: p.current + 1 }));
       }
 
       if (questionErrors.length > 0) {
         setError(`Cập nhật xong metadata nhưng một số câu hỏi gặp lỗi:\n${questionErrors.join("\n")}`);
       } else {
+        setDeletedQuestionIds([]); // Reset sau khi đã xóa thành công
         setSuccess("Cập nhật bài thi thành công!");
         setTimeout(() => {
           navigate(`/exam/${examId}`);
@@ -230,11 +252,12 @@ const EditExam = () => {
       
     } catch (err) {
       setError("Không cập nhật được bài thi");
-      console.error("Update exam error:", err);
     } finally {
       setSaving(false);
+      setSaveProgress({ current: 0, total: 0 });
     }
   };
+
 
 
   if (loading) {
@@ -265,6 +288,22 @@ const EditExam = () => {
           <FaCheck /> {success}
         </div>
       )}
+
+      {/* Progress bar khi đang lưu nhiều câu hỏi */}
+      {saving && saveProgress.total > 0 && (
+        <div className="save-progress-wrap">
+          <div className="save-progress-bar">
+            <div
+              className="save-progress-fill"
+              style={{ width: `${Math.round((saveProgress.current / saveProgress.total) * 100)}%` }}
+            />
+          </div>
+          <span className="save-progress-text">
+            Đang lưu... {saveProgress.current}/{saveProgress.total}
+          </span>
+        </div>
+      )}
+
 
       {error && (
         <div className="error-message">

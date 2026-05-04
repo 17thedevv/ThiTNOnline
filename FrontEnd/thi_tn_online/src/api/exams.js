@@ -29,6 +29,11 @@ export async function updateQuestion(examId, questionId, payload) {
   return res.data;
 }
 
+export async function deleteQuestion(examId, questionId) {
+  const res = await apiClient.delete(`/api/exams/${examId}/questions/${questionId}/`);
+  return res.data;
+}
+
 export async function deleteExam(examId) {
   const res = await apiClient.delete(`/api/exams/${examId}/edit/`);
   return res.data;
